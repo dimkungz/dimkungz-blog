@@ -1,13 +1,12 @@
-import { useState } from 'react'
-import './App.css'
+import NavBar from './components/NavBar'
+import HeroSection from './components/HeroSection'
 
 function App() {
   return (
-    <>
-      <section>
-        <h1>My First React App on Vite</h1>
-      </section>
-    </>
+    <div className="min-h-screen bg-white font-sans antialiased">
+      <NavBar />
+      <HeroSection />
+    </div>
   )
 }
 
