@@ -1,4 +1,6 @@
-import { NavBar, HeroSection, ArticleSection, Footer } from "./components/AllComponents"
+import { NavBar, HeroSection, Footer } from "./components/MainPage"
+import ArticleSection from "./components/ArticleSection"
+
 
 function App() {
   return (
