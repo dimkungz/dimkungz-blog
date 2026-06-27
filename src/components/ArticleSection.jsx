@@ -8,6 +8,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Search } from 'lucide-react'
+import { blogPosts } from '@/data/blogPosts'
+import BlogCard from './BlogCard'
 
 function ArticleSection() {
     const [activeCategory, setActiveCategory] = useState('Highlight')
@@ -88,6 +90,19 @@ function ArticleSection() {
               aria-hidden="true"
             />
           </div>
+        </div>
+        <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
+            {blogPosts.map((post) => (
+                <BlogCard
+                    key={post.id}
+                    image={post.image}
+                    category={post.category}
+                    title={post.title}
+                    description={post.description}
+                    author={post.author}
+                    date={post.date}
+                />
+            ))}
         </div>
       </section>
     )

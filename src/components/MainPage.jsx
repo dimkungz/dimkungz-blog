@@ -90,7 +90,7 @@ export function HeroSection() {
         </div>
 
         <div className="order-2 flex justify-center lg:order-0">
-          <div className="aspect-3/4 w-full max-w-[260px] overflow-hidden rounded-3xl sm:max-w-[300px] lg:max-w-[320px] xl:max-w-[360px]">
+          <div className="aspect-3/4 w-full  overflow-hidden rounded-3xl  lg:max-w-[320px] xl:max-w-[360px]">
             <img
               src={heroPic}
               alt="Author with a cat on his shoulder in an autumn forest"
