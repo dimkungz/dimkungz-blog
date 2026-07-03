@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import heroPic from '../assets/heropic.jpg'
 import { GithubIcon, SocialIconLink } from '@/components/ui/icon'
 
@@ -13,9 +14,9 @@ export function NavBar() {
   return (
     <header className="border-b border-stone-200">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-        <a href="/" className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+        <Link to="/" className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
           hh<span className="text-emerald-500">.</span>
-        </a>
+        </Link>
 
         <div className="hidden items-center gap-2 md:flex">
           <button type="button" className={loginButtonClass}>
@@ -146,12 +147,12 @@ export function Footer() {
             </div>
           </div>
   
-          <a
-            href="/"
+          <Link
+            to="/"
             className="cursor-pointer text-sm text-stone-700 underline underline-offset-2 transition-colors hover:text-stone-900"
           >
             Home page
-          </a>
+          </Link>
         </div>
       </footer>
     )
