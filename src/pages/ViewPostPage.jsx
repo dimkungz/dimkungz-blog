@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import { Copy, SmilePlus } from 'lucide-react'
+import { toast } from 'sonner'
 import AuthModal from '@/components/AuthModal'
 import { isLoggedIn } from '@/lib/auth'
 import { getValidPostId } from '@/lib/posts'
@@ -55,7 +56,6 @@ function PostInteraction({ post }) {
   const [likeCount, setLikeCount] = useState(post.likes)
   const [isLiked, setIsLiked] = useState(false)
   const [comment, setComment] = useState('')
-  const [copyLabel, setCopyLabel] = useState('Copy')
   const [showAuthModal, setShowAuthModal] = useState(false)
 
   const shareUrl = encodeURIComponent(window.location.href)
@@ -77,8 +77,9 @@ function PostInteraction({ post }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href)
-      setCopyLabel('Copied!')
-      setTimeout(() => setCopyLabel('Copy'), 2000)
+      toast.success('Copied!', {
+        description: 'This article has been copied to your clipboard.',
+      })
     } catch (copyError) {
       console.error('Failed to copy link:', copyError)
     }
@@ -131,7 +132,7 @@ function PostInteraction({ post }) {
             className="flex cursor-pointer items-center gap-2 rounded-full border border-stone-900 bg-white px-4 py-2 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50"
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
-            {copyLabel}
+            Copy
           </button>
 
           {shareLinks.map(({ label, href, text }) => (

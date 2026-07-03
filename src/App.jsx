@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { Toaster } from 'sonner'
 import { NavBar, Footer } from './components/MainPage'
 import HomePage from './pages/HomePage'
 import ViewPostPage from './pages/ViewPostPage'
@@ -16,6 +17,7 @@ function App() {
         </Routes>
       </div>
       <Footer />
+      <Toaster position="bottom-right" richColors closeButton />
     </div>
   )
 }
