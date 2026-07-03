@@ -69,7 +69,7 @@ function ArticleSection() {
                 className={`cursor-pointer rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
                   activeCategory === category
                     ? 'bg-neutral-200 text-stone-700'
-                    : 'text-stone-400 hover:text-stone-600'
+                    : 'text-stone-400 hover:text-stone-600 hover:bg-white'
                 }`}
               >
                 {category}
