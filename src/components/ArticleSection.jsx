@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Input } from '@/components/ui/input'
 import {
@@ -38,7 +39,62 @@ function filterPostsByCategory(posts, activeCategory) {
   return posts.filter((post) => post.category === category)
 }
 
+function filterPostsBySearch(posts, searchQuery) {
+  const query = searchQuery.trim().toLowerCase()
+  if (!query) return posts
+
+  return posts.filter((post) => post.title.toLowerCase().includes(query))
+}
+
+function ArticleSearchBar({ posts, value, onChange, onSelect, inputClassName }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const suggestions = filterPostsBySearch(posts, value)
+  const showDropdown = isOpen && value.trim() && suggestions.length > 0
+
+  return (
+    <div className="relative w-full">
+      <Input
+        type="search"
+        placeholder="Search"
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value)
+          setIsOpen(true)
+        }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+        className={inputClassName}
+      />
+      <Search
+        className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-stone-400"
+        aria-hidden="true"
+      />
+
+      {showDropdown && (
+        <ul className="absolute top-[calc(100%+8px)] z-20 max-h-80 w-full overflow-y-auto rounded-2xl border border-stone-200 bg-white py-2 shadow-lg">
+          {suggestions.map((post) => (
+            <li key={post.id}>
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onSelect(post)
+                  setIsOpen(false)
+                }}
+                className="w-full cursor-pointer rounded-xl px-4 py-3 text-left text-sm text-stone-900 transition-colors hover:bg-neutral-100"
+              >
+                {post.title}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function ArticleSection() {
+    const navigate = useNavigate()
     const [activeCategory, setActiveCategory] = useState('Highlight')
     const [searchQuery, setSearchQuery] = useState('')
     const [allPosts, setAllPosts] = useState([])
@@ -46,11 +102,22 @@ function ArticleSection() {
     const [isLoading, setIsLoading] = useState(true)
 
     const filteredPosts = filterPostsByCategory(allPosts, activeCategory)
-    const totalPages = Math.max(1, Math.ceil(filteredPosts.length / POSTS_PER_PAGE))
-    const displayedPosts = filteredPosts.slice(
+    const searchedPosts = filterPostsBySearch(filteredPosts, searchQuery)
+    const totalPages = Math.max(1, Math.ceil(searchedPosts.length / POSTS_PER_PAGE))
+    const displayedPosts = searchedPosts.slice(
       (currentPage - 1) * POSTS_PER_PAGE,
       currentPage * POSTS_PER_PAGE,
     )
+
+    const handleSearchChange = (value) => {
+      setSearchQuery(value)
+      setCurrentPage(1)
+    }
+
+    const handleSearchSelect = (post) => {
+      setSearchQuery('')
+      navigate(`/post/${post.id}`)
+    }
 
     const handleCategoryChange = (event, category) => {
       event.preventDefault()
@@ -85,19 +152,13 @@ function ArticleSection() {
         <h2 className="mb-6 text-2xl font-bold text-stone-900 sm:text-3xl">Latest articles</h2>
   
         <div className="flex flex-col gap-4 rounded-2xl bg-neutral-100 px-4 py-4 md:hidden">
-          <div className="relative">
-            <Input
-              type="search"
-              placeholder="Search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="h-auto rounded-xl border-stone-200 bg-white py-2.5 pr-10 pl-4 text-sm text-stone-500 shadow-none placeholder:text-stone-500"
-            />
-            <Search
-              className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-stone-500"
-              aria-hidden="true"
-            />
-          </div>
+          <ArticleSearchBar
+            posts={filteredPosts}
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onSelect={handleSearchSelect}
+            inputClassName="h-auto rounded-full border-stone-200 bg-white py-2.5 pr-10 pl-4 text-sm text-stone-500 shadow-none placeholder:text-stone-500"
+          />
   
           <div>
             <label
@@ -148,17 +209,13 @@ function ArticleSection() {
             ))}
           </div>
   
-          <div className="relative w-full max-w-[220px]">
-            <Input
-              type="search"
-              placeholder="Search"
+          <div className="w-full max-w-[360px]">
+            <ArticleSearchBar
+              posts={filteredPosts}
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="h-auto rounded-xl border-0 bg-white py-2.5 pr-10 pl-4 text-sm text-stone-900 shadow-none placeholder:text-stone-400"
-            />
-            <Search
-              className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-stone-400"
-              aria-hidden="true"
+              onChange={handleSearchChange}
+              onSelect={handleSearchSelect}
+              inputClassName="h-auto rounded-full border border-stone-300 bg-white py-2.5 pr-10 pl-4 text-sm text-stone-900 shadow-none placeholder:text-stone-400"
             />
           </div>
         </div>
