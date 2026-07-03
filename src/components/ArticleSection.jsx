@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select'
 import { Search } from 'lucide-react'
 import BlogCard from './BlogCard'
+import { deduplicatePosts } from '@/lib/posts'
 
 const API_BASE_URL = 'https://blog-post-project-api.vercel.app'
 
@@ -27,16 +28,6 @@ function formatPostDate(dateString) {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  })
-}
-
-function deduplicatePosts(posts) {
-  const seenTitles = new Set()
-
-  return posts.filter((post) => {
-    if (seenTitles.has(post.title)) return false
-    seenTitles.add(post.title)
-    return true
   })
 }
 
@@ -180,6 +171,7 @@ function ArticleSection() {
               displayedPosts.map((post) => (
                 <BlogCard
                   key={post.id}
+                  id={post.id}
                   image={post.image}
                   category={post.category}
                   title={post.title}
