@@ -1,15 +1,19 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import heroPic from '../assets/heropic.jpg'
 import { GithubIcon, SocialIconLink } from '@/components/ui/icon'
 
 export function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const location = useLocation()
 
   const loginButtonClass =
-    'cursor-pointer rounded-full border border-stone-900 px-6 py-2 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50 sm:px-8 sm:py-2.5'
+    'cursor-pointer rounded-full border border-stone-900 px-6 py-2 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100 sm:px-8 sm:py-2.5'
   const signupButtonClass =
     'cursor-pointer rounded-full bg-stone-900 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800 sm:px-8 sm:py-2.5'
+
+  const loginNavClass = loginButtonClass 
+  const signupNavClass = signupButtonClass
 
   return (
     <header className="border-b border-stone-200">
@@ -19,12 +23,12 @@ export function NavBar() {
         </Link>
 
         <div className="hidden items-center gap-2 md:flex">
-          <button type="button" className={loginButtonClass}>
+          <Link to="/login" className={loginNavClass}>
             Log in
-          </button>
-          <button type="button" className={signupButtonClass}>
+          </Link>
+          <Link to="/signup" className={signupNavClass}>
             Sign up
-          </button>
+          </Link>
         </div>
 
         <button
@@ -60,12 +64,12 @@ export function NavBar() {
         <div className="min-h-0">
           <div className="border-t border-stone-200 px-4 py-4">
             <div className="flex flex-col gap-3">
-              <button type="button" className={`w-full ${loginButtonClass}`}>
+              <Link to="/login" className={`w-full text-center ${loginNavClass}`}>
                 Log in
-              </button>
-              <button type="button" className={`w-full ${signupButtonClass}`}>
+              </Link>
+              <Link to="/signup" className={`w-full text-center ${signupNavClass}`}>
                 Sign up
-              </button>
+              </Link>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
 
 function AuthModal({ onClose }) {
@@ -30,21 +31,23 @@ function AuthModal({ onClose }) {
           Create an account to continue
         </h2>
 
-        <button
-          type="button"
-          className="mb-6 w-full cursor-pointer rounded-full bg-stone-900 px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800"
+        <Link
+          to="/signup"
+          onClick={onClose}
+          className="mb-6 inline-block w-full cursor-pointer rounded-full bg-stone-900 px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800"
         >
           Create account
-        </button>
+        </Link>
 
         <p className="text-sm text-stone-500">
           Already have an account?{' '}
-          <button
-            type="button"
+          <Link
+            to="/login"
+            onClick={onClose}
             className="cursor-pointer font-bold text-stone-900 underline underline-offset-2"
           >
             Log in
-          </button>
+          </Link>
         </p>
       </div>
     </div>
