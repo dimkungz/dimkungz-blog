@@ -1,20 +1,25 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
-import { login } from '@/lib/auth'
-import { adminLogout } from '@/lib/admin'
-import { authenticateMember } from '@/lib/members'
-import { clearAdminNotifications } from '@/lib/notifications'
+import { logout } from '@/lib/auth'
+import { adminLogin } from '@/lib/admin'
+import { initializeAdminNotifications } from '@/lib/notifications'
+import { useAdminLoggedIn } from '@/hooks/useAdminLoggedIn'
 import { cn } from '@/lib/utils'
 
-function LoginPage() {
+function AdminLoginPage() {
   const navigate = useNavigate()
+  const isAdmin = useAdminLoggedIn()
   const [hasLoginError, setHasLoginError] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   })
+
+  if (isAdmin) {
+    return <Navigate to="/admin/articles" replace />
+  }
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -25,9 +30,9 @@ function LoginPage() {
   const handleSubmit = (event) => {
     event.preventDefault()
 
-    const member = authenticateMember(formData.email, formData.password)
+    const success = adminLogin(formData.email, formData.password)
 
-    if (!member) {
+    if (!success) {
       setHasLoginError(true)
       toast.error("Your password is incorrect or this email doesn't exist", {
         description: 'Please try another password or email',
@@ -35,10 +40,9 @@ function LoginPage() {
       return
     }
 
-    adminLogout()
-    clearAdminNotifications()
-    login(member)
-    navigate('/')
+    logout()
+    initializeAdminNotifications()
+    navigate('/admin/articles')
   }
 
   const inputClass = cn(
@@ -49,17 +53,18 @@ function LoginPage() {
   )
 
   return (
-    <main className="flex flex-1 items-center justify-center bg-neutral-100 px-6 py-12">
+    <main className="flex min-h-screen flex-1 items-center justify-center bg-neutral-100 px-6 py-12">
       <div className="w-full max-w-md rounded-3xl bg-neutral-200/80 px-8 py-10 sm:px-10 sm:py-12">
+        <p className="mb-2 text-center text-sm font-medium text-orange-500">Admin panel</p>
         <h1 className="mb-8 text-center text-3xl font-bold text-stone-900">Log in</h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
-            <label htmlFor="email" className="mb-2 block text-sm text-stone-500">
+            <label htmlFor="admin-email" className="mb-2 block text-sm text-stone-500">
               Email
             </label>
             <Input
-              id="email"
+              id="admin-email"
               name="email"
               type="email"
               placeholder="Email"
@@ -71,11 +76,11 @@ function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-2 block text-sm text-stone-500">
+            <label htmlFor="admin-password" className="mb-2 block text-sm text-stone-500">
               Password
             </label>
             <Input
-              id="password"
+              id="admin-password"
               name="password"
               type="password"
               placeholder="Password"
@@ -93,19 +98,9 @@ function LoginPage() {
             Log in
           </button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-stone-500">
-          Don&apos;t have an account?{' '}
-          <Link
-            to="/signup"
-            className="font-bold text-stone-900 underline underline-offset-2"
-          >
-            Sign up
-          </Link>
-        </p>
       </div>
     </main>
   )
 }
 
-export default LoginPage
+export default AdminLoginPage

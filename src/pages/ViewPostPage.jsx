@@ -6,6 +6,7 @@ import { Copy, SmilePlus } from 'lucide-react'
 import { toast } from 'sonner'
 import AuthModal from '@/components/AuthModal'
 import { isLoggedIn } from '@/lib/auth'
+import { useAdminLoggedIn } from '@/hooks/useAdminLoggedIn'
 import { getValidPostId } from '@/lib/posts'
 import NotFoundPage from '@/pages/NotFoundPage'
 
@@ -53,6 +54,7 @@ function PostContent({ content }) {
 }
 
 function PostInteraction({ post }) {
+  const isAdmin = useAdminLoggedIn()
   const [likeCount, setLikeCount] = useState(post.likes)
   const [isLiked, setIsLiked] = useState(false)
   const [comment, setComment] = useState('')
@@ -60,14 +62,17 @@ function PostInteraction({ post }) {
 
   const shareUrl = encodeURIComponent(window.location.href)
   const shareTitle = encodeURIComponent(post.title)
+  const canInteract = isLoggedIn() && !isAdmin
 
   const requireAuth = () => {
+    if (isAdmin) return false
     if (isLoggedIn()) return true
     setShowAuthModal(true)
     return false
   }
 
   const handleLike = () => {
+    if (!canInteract) return
     if (!requireAuth()) return
 
     setLikeCount((count) => (isLiked ? count - 1 : count + 1))
@@ -87,6 +92,7 @@ function PostInteraction({ post }) {
 
   const handleSendComment = (event) => {
     event.preventDefault()
+    if (!canInteract) return
     if (!comment.trim()) return
     if (!requireAuth()) return
     setComment('')
@@ -117,9 +123,12 @@ function PostInteraction({ post }) {
         <button
           type="button"
           onClick={handleLike}
-          className={`flex cursor-pointer items-center gap-2 rounded-full border border-stone-900 bg-white px-4 py-2 text-sm font-medium transition-colors hover:bg-stone-50 ${
-            isLiked ? 'text-stone-900' : 'text-stone-700'
-          }`}
+          disabled={!canInteract}
+          className={`flex items-center gap-2 rounded-full border border-stone-900 bg-white px-4 py-2 text-sm font-medium transition-colors ${
+            canInteract
+              ? 'cursor-pointer hover:bg-stone-50'
+              : 'cursor-not-allowed opacity-50'
+          } ${isLiked ? 'text-stone-900' : 'text-stone-700'}`}
         >
           <SmilePlus className="h-4 w-4" aria-hidden="true" />
           <span>{likeCount}</span>
@@ -150,6 +159,7 @@ function PostInteraction({ post }) {
         </div>
       </div>
 
+      {!isAdmin && (
       <form onSubmit={handleSendComment} className="flex flex-col gap-4">
         <h2 className="text-xl font-bold text-stone-900">Comment</h2>
         <textarea
@@ -157,17 +167,20 @@ function PostInteraction({ post }) {
           onChange={(event) => setComment(event.target.value)}
           placeholder="What are your thoughts?"
           rows={5}
-          className="w-full resize-none rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-900"
+          disabled={!canInteract}
+          className="w-full resize-none rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <div className="flex justify-end">
           <button
             type="submit"
-            className="cursor-pointer rounded-full bg-stone-900 px-8 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800"
+            disabled={!canInteract}
+            className="rounded-full bg-stone-900 px-8 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Send
           </button>
         </div>
       </form>
+      )}
       </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}

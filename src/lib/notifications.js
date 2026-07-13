@@ -1,44 +1,68 @@
-const NOTIFICATIONS_KEY = 'notifications'
+const ADMIN_NOTIFICATIONS_KEY = 'adminNotifications'
 
-const DEFAULT_NOTIFICATIONS = [
+const DEFAULT_ADMIN_NOTIFICATIONS = [
   {
     id: '1',
-    title: 'New comment on your article',
-    message: 'Someone replied to "The Art of Mindful Living".',
-    time: '2 hours ago',
+    type: 'comment',
+    userName: 'Jacob Lash',
+    userAvatar: null,
+    articleTitle: 'The Fascinating World of Cats: Why We Love Our Furry Friends',
+    articleId: 2,
+    comment:
+      'I loved this article! It really explains why my cat is so independent yet loving. The purring section was super interesting.',
+    time: '4 hours ago',
     read: false,
   },
   {
     id: '2',
-    title: 'Your post got a new like',
-    message: '"Cat Care Tips" received 5 new likes.',
-    time: '5 hours ago',
+    type: 'like',
+    userName: 'Jacob Lash',
+    userAvatar: null,
+    articleTitle: 'The Fascinating World of Cats: Why We Love Our Furry Friends',
+    articleId: 2,
+    comment: null,
+    time: '4 hours ago',
     read: false,
-  },
-  {
-    id: '3',
-    title: 'Welcome to hh.',
-    message: 'Thanks for joining our community!',
-    time: '1 day ago',
-    read: true,
   },
 ]
 
+export function getNotificationActionText(notification) {
+  return notification.type === 'comment'
+    ? 'Commented on your article:'
+    : 'liked your article:'
+}
+
+export function getNotificationSummary(notification) {
+  return {
+    title: `${notification.userName} ${getNotificationActionText(notification)}`,
+    message: notification.articleTitle,
+  }
+}
+
+export function initializeAdminNotifications() {
+  localStorage.setItem(
+    ADMIN_NOTIFICATIONS_KEY,
+    JSON.stringify(DEFAULT_ADMIN_NOTIFICATIONS)
+  )
+  window.dispatchEvent(new Event('notifications-change'))
+}
+
+export function clearAdminNotifications() {
+  localStorage.removeItem(ADMIN_NOTIFICATIONS_KEY)
+  window.dispatchEvent(new Event('notifications-change'))
+}
+
 export function getNotifications() {
   try {
-    const raw = localStorage.getItem(NOTIFICATIONS_KEY)
-    if (!raw) {
-      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(DEFAULT_NOTIFICATIONS))
-      return DEFAULT_NOTIFICATIONS
-    }
-    return JSON.parse(raw)
+    const raw = localStorage.getItem(ADMIN_NOTIFICATIONS_KEY)
+    return raw ? JSON.parse(raw) : []
   } catch {
-    return DEFAULT_NOTIFICATIONS
+    return []
   }
 }
 
 export function saveNotifications(notifications) {
-  localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications))
+  localStorage.setItem(ADMIN_NOTIFICATIONS_KEY, JSON.stringify(notifications))
   window.dispatchEvent(new Event('notifications-change'))
 }
 
