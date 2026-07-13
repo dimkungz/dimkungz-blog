@@ -33,7 +33,7 @@ function LoginPage() {
       return
     }
 
-    login()
+    login(member)
     navigate('/')
   }
 
