@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Bell,
   ChevronDown,
+  ExternalLink,
   LogOut,
   RotateCcw,
   User,
@@ -10,12 +11,16 @@ import {
 import heroPic from '../assets/heropic.jpg'
 import { GithubIcon, SocialIconLink } from '@/components/ui/icon'
 import { DEFAULT_AVATAR, logout } from '@/lib/auth'
+import { adminLogout } from '@/lib/admin'
 import { useAuthUser } from '@/hooks/useAuthUser'
+import { useAdminLoggedIn } from '@/hooks/useAdminLoggedIn'
 import {
+  clearAdminNotifications,
   getNotifications,
   getUnreadCount,
   markAllNotificationsRead,
   markNotificationRead,
+  getNotificationSummary,
 } from '@/lib/notifications'
 
 function useNotifications() {
@@ -29,9 +34,11 @@ function useNotifications() {
     }
 
     window.addEventListener('notifications-change', syncNotifications)
+    window.addEventListener('admin-auth-change', syncNotifications)
     window.addEventListener('storage', syncNotifications)
     return () => {
       window.removeEventListener('notifications-change', syncNotifications)
+      window.removeEventListener('admin-auth-change', syncNotifications)
       window.removeEventListener('storage', syncNotifications)
     }
   }, [])
@@ -57,13 +64,9 @@ function useClickOutside(ref, handler, enabled) {
 function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
   const navigate = useNavigate()
   const user = useAuthUser()
-  const { notifications, unreadCount } = useNotifications()
-  const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const notificationsRef = useRef(null)
   const profileRef = useRef(null)
 
-  useClickOutside(notificationsRef, () => setShowNotifications(false), showNotifications)
   useClickOutside(profileRef, () => setShowProfileMenu(false), showProfileMenu)
 
   if (!user) return null
@@ -75,20 +78,8 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
     navigate('/')
   }
 
-  const handleToggleNotifications = () => {
-    setShowNotifications((open) => {
-      const nextOpen = !open
-      if (nextOpen && unreadCount > 0) {
-        markAllNotificationsRead()
-      }
-      return nextOpen
-    })
-    setShowProfileMenu(false)
-  }
-
   const handleToggleProfileMenu = () => {
     setShowProfileMenu((open) => !open)
-    setShowNotifications(false)
   }
 
   const profileMenuItems = [
@@ -118,62 +109,13 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
   if (variant === 'mobile') {
     return (
       <div className="flex w-full flex-col gap-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <img
-              src={userAvatar}
-              alt={user.name}
-              className="h-10 w-10 shrink-0 rounded-full object-cover"
-            />
-            <span className="truncate text-sm font-medium text-stone-900">{user.name}</span>
-          </div>
-
-          <div ref={notificationsRef} className="relative shrink-0">
-            <button
-              type="button"
-              onClick={handleToggleNotifications}
-              className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition-colors hover:bg-stone-50"
-              aria-label="Notifications"
-              aria-expanded={showNotifications}
-            >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
-              )}
-            </button>
-
-            {showNotifications && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg">
-                <div className="border-b border-stone-100 px-4 py-3">
-                  <p className="text-sm font-semibold text-stone-900">Notifications</p>
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <p className="px-4 py-6 text-center text-sm text-stone-500">
-                      No notifications yet
-                    </p>
-                  ) : (
-                    notifications.map((notification) => (
-                      <button
-                        key={notification.id}
-                        type="button"
-                        onClick={() => markNotificationRead(notification.id)}
-                        className={`flex w-full cursor-pointer flex-col gap-1 border-b border-stone-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-stone-50 ${
-                          notification.read ? 'bg-white' : 'bg-stone-50/80'
-                        }`}
-                      >
-                        <span className="text-sm font-medium text-stone-900">
-                          {notification.title}
-                        </span>
-                        <span className="text-sm text-stone-500">{notification.message}</span>
-                        <span className="text-xs text-stone-400">{notification.time}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="flex min-w-0 items-center gap-3">
+          <img
+            src={userAvatar}
+            alt={user.name}
+            className="h-10 w-10 shrink-0 rounded-full object-cover"
+          />
+          <span className="truncate text-sm font-medium text-stone-900">{user.name}</span>
         </div>
 
         <div className="flex flex-col">
@@ -211,69 +153,263 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
   }
 
   return (
-    <>
-      <div ref={notificationsRef} className="relative">
-        <button
-          type="button"
-          onClick={handleToggleNotifications}
-          className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50"
-          aria-label="Notifications"
-          aria-expanded={showNotifications}
-        >
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
-          )}
-        </button>
+    <div ref={profileRef} className="relative">
+      <button
+        type="button"
+        onClick={handleToggleProfileMenu}
+        className="flex cursor-pointer items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-stone-100 sm:gap-3 sm:pr-3"
+        aria-label="Open profile menu"
+        aria-expanded={showProfileMenu}
+      >
+        <img
+          src={userAvatar}
+          alt={user.name}
+          className="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10"
+        />
+        <span className="hidden max-w-[120px] truncate text-sm font-medium text-stone-900 sm:inline sm:max-w-none">
+          {user.name}
+        </span>
+        <ChevronDown
+          className={`hidden h-4 w-4 text-stone-500 transition-transform sm:block ${
+            showProfileMenu ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
 
-        {showNotifications && (
-          <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg">
-            <div className="border-b border-stone-100 px-4 py-3">
-              <p className="text-sm font-semibold text-stone-900">Notifications</p>
-            </div>
-            <div className="max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <p className="px-4 py-6 text-center text-sm text-stone-500">
-                  No notifications yet
-                </p>
-              ) : (
-                notifications.map((notification) => (
-                  <button
-                    key={notification.id}
-                    type="button"
-                    onClick={() => markNotificationRead(notification.id)}
-                    className={`flex w-full cursor-pointer flex-col gap-1 border-b border-stone-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-stone-50 ${
-                      notification.read ? 'bg-white' : 'bg-stone-50/80'
-                    }`}
-                  >
-                    <span className="text-sm font-medium text-stone-900">
-                      {notification.title}
-                    </span>
-                    <span className="text-sm text-stone-500">{notification.message}</span>
-                    <span className="text-xs text-stone-400">{notification.time}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
+      {showProfileMenu && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-stone-200 bg-white py-2 shadow-lg">
+          {profileMenuItems.map(({ label, icon: Icon, onClick }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={onClick}
+              className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50"
+            >
+              <Icon className="h-4 w-4 text-stone-400" />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AdminNavActions({ onMobileNavigate, variant = 'desktop' }) {
+  const navigate = useNavigate()
+  const { notifications, unreadCount } = useNotifications()
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const notificationsRef = useRef(null)
+  const profileRef = useRef(null)
+
+  useClickOutside(notificationsRef, () => setShowNotifications(false), showNotifications)
+  useClickOutside(profileRef, () => setShowProfileMenu(false), showProfileMenu)
+
+  const handleLogout = () => {
+    adminLogout()
+    clearAdminNotifications()
+    setShowProfileMenu(false)
+    onMobileNavigate?.()
+    navigate('/')
+  }
+
+  const handleToggleNotifications = () => {
+    setShowNotifications((open) => {
+      const nextOpen = !open
+      if (nextOpen && unreadCount > 0) {
+        markAllNotificationsRead()
+      }
+      return nextOpen
+    })
+    setShowProfileMenu(false)
+  }
+
+  const handleToggleProfileMenu = () => {
+    setShowProfileMenu((open) => !open)
+    setShowNotifications(false)
+  }
+
+  const profileMenuItems = [
+    {
+      label: 'Profile',
+      icon: User,
+      onClick: () => {
+        setShowProfileMenu(false)
+        onMobileNavigate?.()
+        navigate('/admin/profile')
+      },
+    },
+    {
+      label: 'Reset password',
+      icon: RotateCcw,
+      onClick: () => {
+        setShowProfileMenu(false)
+        onMobileNavigate?.()
+        navigate('/admin/reset-password')
+      },
+    },
+    {
+      label: 'Admin panel',
+      icon: ExternalLink,
+      onClick: () => {
+        setShowProfileMenu(false)
+        onMobileNavigate?.()
+        navigate('/admin/articles')
+      },
+    },
+  ]
+
+  const notificationPanelContent = (
+    <>
+      <div className="border-b border-stone-100 px-4 py-3">
+        <p className="text-sm font-semibold text-stone-900">Notifications</p>
+      </div>
+      <div className="max-h-60 overflow-y-auto md:max-h-80">
+        {notifications.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-stone-500">
+            No notifications yet
+          </p>
+        ) : (
+          notifications.map((notification) => {
+            const { title, message } = getNotificationSummary(notification)
+
+            return (
+            <button
+              key={notification.id}
+              type="button"
+              onClick={() => markNotificationRead(notification.id)}
+              className={`flex w-full cursor-pointer flex-col gap-1 border-b border-stone-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-stone-50 ${
+                notification.read ? 'bg-white' : 'bg-stone-50/80'
+              }`}
+            >
+              <span className="text-sm font-medium text-stone-900">
+                {title}
+              </span>
+              <span className="text-sm text-stone-500">{message}</span>
+              <span className="text-xs text-stone-400">{notification.time}</span>
+            </button>
+            )
+          })
         )}
       </div>
+    </>
+  )
+
+  const notificationBellButton = (
+    <button
+      type="button"
+      onClick={handleToggleNotifications}
+      className="relative flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition-colors hover:bg-stone-50"
+      aria-label="Notifications"
+      aria-expanded={showNotifications}
+    >
+      <Bell className="h-5 w-5" />
+      {unreadCount > 0 && (
+        <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500" />
+      )}
+    </button>
+  )
+
+  const notificationButton = (
+    <div ref={notificationsRef} className="relative shrink-0">
+      {notificationBellButton}
+      {showNotifications && variant !== 'mobile' && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg">
+          {notificationPanelContent}
+        </div>
+      )}
+    </div>
+  )
+
+  if (variant === 'mobile') {
+    return (
+      <div className="flex w-full flex-col gap-5">
+        <div ref={notificationsRef} className="relative">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <img
+                src={DEFAULT_AVATAR}
+                alt="Admin"
+                className="h-10 w-10 shrink-0 rounded-full object-cover"
+              />
+              <span className="truncate text-sm font-medium text-stone-900">Admin</span>
+            </div>
+            {notificationBellButton}
+          </div>
+
+          {showNotifications && (
+            <div className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg">
+              {notificationPanelContent}
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          {showNotifications && (
+            <button
+              type="button"
+              className="absolute inset-0 z-40 cursor-default"
+              onClick={() => setShowNotifications(false)}
+              aria-label="Close notifications"
+            />
+          )}
+
+          <div
+            className={`flex flex-col ${
+              showNotifications ? 'pointer-events-none select-none opacity-40' : ''
+            }`}
+          >
+          {profileMenuItems.map(({ label, icon: Icon, onClick }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={onClick}
+              className="flex w-full cursor-pointer items-center gap-3 py-3 text-left text-sm text-stone-700 transition-colors hover:text-stone-900"
+            >
+              <Icon className="h-5 w-5 text-stone-400" />
+              {label}
+            </button>
+          ))}
+
+          <div className="my-1 border-t border-stone-200" />
+
+          <button
+            type="button"
+            onClick={() => {
+              handleLogout()
+              onMobileNavigate?.()
+            }}
+            className="flex w-full cursor-pointer items-center gap-3 pt-3 text-left text-sm text-stone-700 transition-colors hover:text-stone-900"
+          >
+            <LogOut className="h-5 w-5 text-stone-400" />
+            Log out
+          </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {notificationButton}
 
       <div ref={profileRef} className="relative">
         <button
           type="button"
           onClick={handleToggleProfileMenu}
           className="flex cursor-pointer items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-stone-100 sm:gap-3 sm:pr-3"
-          aria-label="Open profile menu"
+          aria-label="Open admin menu"
           aria-expanded={showProfileMenu}
         >
           <img
-            src={userAvatar}
-            alt={user.name}
+            src={DEFAULT_AVATAR}
+            alt="Admin"
             className="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10"
           />
           <span className="hidden max-w-[120px] truncate text-sm font-medium text-stone-900 sm:inline sm:max-w-none">
-            {user.name}
+            Admin
           </span>
           <ChevronDown
             className={`hidden h-4 w-4 text-stone-500 transition-transform sm:block ${
@@ -295,6 +431,17 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
                 {label}
               </button>
             ))}
+
+            <div className="my-1 border-t border-stone-200" />
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50"
+            >
+              <LogOut className="h-4 w-4 text-stone-400" />
+              Log out
+            </button>
           </div>
         )}
       </div>
@@ -309,6 +456,7 @@ export function NavBar() {
   const location = useLocation()
   const navigate = useNavigate()
   const user = useAuthUser()
+  const isAdmin = useAdminLoggedIn()
 
   const loginButtonClass =
     'cursor-pointer rounded-full border border-stone-900 px-6 py-2 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100 sm:px-8 sm:py-2.5'
@@ -368,7 +516,11 @@ export function NavBar() {
           hh<span className="text-emerald-500">.</span>
         </Link>
 
-        {user ? (
+        {isAdmin ? (
+          <div className="hidden items-center gap-3 md:flex">
+            <AdminNavActions />
+          </div>
+        ) : user ? (
           <div className="hidden items-center gap-3 md:flex">
             <LoggedInNavActions />
           </div>
@@ -423,7 +575,9 @@ export function NavBar() {
             style={{ top: headerHeight }}
           >
             <div className="mx-auto max-w-6xl px-4 py-5">
-              {user ? (
+              {isAdmin ? (
+                <AdminNavActions variant="mobile" onMobileNavigate={closeMobileMenu} />
+              ) : user ? (
                 <LoggedInNavActions variant="mobile" onMobileNavigate={closeMobileMenu} />
               ) : (
                 <div className="flex flex-col gap-3">
