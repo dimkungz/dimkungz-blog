@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Bell,
@@ -9,29 +9,14 @@ import {
 } from 'lucide-react'
 import heroPic from '../assets/heropic.jpg'
 import { GithubIcon, SocialIconLink } from '@/components/ui/icon'
-import { DEFAULT_AVATAR, getCurrentUser, logout } from '@/lib/auth'
+import { DEFAULT_AVATAR, logout } from '@/lib/auth'
+import { useAuthUser } from '@/hooks/useAuthUser'
 import {
   getNotifications,
   getUnreadCount,
   markAllNotificationsRead,
   markNotificationRead,
 } from '@/lib/notifications'
-
-function useAuthUser() {
-  const [user, setUser] = useState(getCurrentUser)
-
-  useEffect(() => {
-    const syncUser = () => setUser(getCurrentUser())
-    window.addEventListener('auth-change', syncUser)
-    window.addEventListener('storage', syncUser)
-    return () => {
-      window.removeEventListener('auth-change', syncUser)
-      window.removeEventListener('storage', syncUser)
-    }
-  }, [])
-
-  return user
-}
 
 function useNotifications() {
   const [notifications, setNotifications] = useState(getNotifications)
@@ -107,14 +92,28 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
   }
 
   const profileMenuItems = [
-    { label: 'Profile', icon: User, onClick: () => setShowProfileMenu(false) },
+    {
+      label: 'Profile',
+      icon: User,
+      onClick: () => {
+        setShowProfileMenu(false)
+        onMobileNavigate?.()
+        navigate('/profile')
+      },
+    },
     {
       label: 'Reset password',
       icon: RotateCcw,
-      onClick: () => setShowProfileMenu(false),
+      onClick: () => {
+        setShowProfileMenu(false)
+        onMobileNavigate?.()
+        navigate('/reset-password')
+      },
     },
     { label: 'Log out', icon: LogOut, onClick: handleLogout },
   ]
+
+  const userAvatar = user.avatar || DEFAULT_AVATAR
 
   if (variant === 'mobile') {
     return (
@@ -122,7 +121,7 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <img
-              src={DEFAULT_AVATAR}
+              src={userAvatar}
               alt={user.name}
               className="h-10 w-10 shrink-0 rounded-full object-cover"
             />
@@ -269,7 +268,7 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
           aria-expanded={showProfileMenu}
         >
           <img
-            src={DEFAULT_AVATAR}
+            src={userAvatar}
             alt={user.name}
             className="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10"
           />
@@ -306,8 +305,9 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
 export function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
-  const headerRef = useRef(null)
+  const topBarRef = useRef(null)
   const location = useLocation()
+  const navigate = useNavigate()
   const user = useAuthUser()
 
   const loginButtonClass =
@@ -321,12 +321,14 @@ export function NavBar() {
 
   useEffect(() => {
     setIsMenuOpen(false)
+    document.body.style.overflow = ''
+    window.scrollTo(0, 0)
   }, [location.pathname])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const updateHeaderHeight = () => {
-      if (headerRef.current) {
-        setHeaderHeight(headerRef.current.offsetHeight)
+      if (topBarRef.current) {
+        setHeaderHeight(topBarRef.current.offsetHeight)
       }
     }
 
@@ -347,10 +349,22 @@ export function NavBar() {
     }
   }, [isMenuOpen])
 
+  const handleLogoClick = () => {
+    closeMobileMenu()
+    navigate('/')
+  }
+
   return (
-    <header ref={headerRef} className="sticky top-0 z-50 border-b border-stone-200 bg-white">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-        <Link to="/" className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+    <header className="sticky top-0 z-50 border-b border-stone-200 bg-white">
+      <div
+        ref={topBarRef}
+        className="relative z-60 mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4"
+      >
+        <Link
+          to="/"
+          onClick={handleLogoClick}
+          className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl"
+        >
           hh<span className="text-emerald-500">.</span>
         </Link>
 
@@ -405,7 +419,7 @@ export function NavBar() {
           />
 
           <div
-            className="fixed inset-x-0 z-50 border-t border-stone-200 bg-white shadow-lg md:hidden"
+            className="fixed inset-x-0 z-40 border-t border-stone-200 bg-white shadow-lg md:hidden"
             style={{ top: headerHeight }}
           >
             <div className="mx-auto max-w-6xl px-4 py-5">

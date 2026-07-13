@@ -1,3 +1,5 @@
+import defaultAvatar from '../assets/default-avatar.png'
+
 const CURRENT_USER_KEY = 'currentUser'
 
 export function isLoggedIn() {
@@ -21,8 +23,17 @@ export function login(member) {
       name: member.name,
       username: member.username,
       email: member.email,
+      avatar: member.avatar ?? null,
     })
   )
+  window.dispatchEvent(new Event('auth-change'))
+}
+
+export function updateCurrentUser(updates) {
+  const user = getCurrentUser()
+  if (!user) return
+
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ ...user, ...updates }))
   window.dispatchEvent(new Event('auth-change'))
 }
 
@@ -32,5 +43,4 @@ export function logout() {
   window.dispatchEvent(new Event('auth-change'))
 }
 
-export const DEFAULT_AVATAR =
-  'https://res.cloudinary.com/dcbpjtd1r/image/upload/v1728449784/my-blog-post/xgfy0xnvyemkklcqodkg.jpg'
+export const DEFAULT_AVATAR = defaultAvatar
