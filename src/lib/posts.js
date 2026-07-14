@@ -1,25 +1,13 @@
-const UNIQUE_POST_COUNT = 6
-
 export const API_BASE_URL = 'https://blog-post-project-api.vercel.app'
 
 export function getValidPostId(postId) {
   const id = Number(postId)
 
-  if (!Number.isInteger(id) || id < 1 || id > UNIQUE_POST_COUNT) {
+  if (!Number.isInteger(id) || id < 1) {
     return null
   }
 
   return id
-}
-
-export function deduplicatePosts(posts) {
-  const seenTitles = new Set()
-
-  return posts.filter((post) => {
-    if (seenTitles.has(post.title)) return false
-    seenTitles.add(post.title)
-    return true
-  })
 }
 
 export async function fetchPosts(limit = 30) {
@@ -30,7 +18,7 @@ export async function fetchPosts(limit = 30) {
   }
 
   const data = await response.json()
-  return deduplicatePosts(data.posts)
+  return data.posts
 }
 
 export async function fetchPost(postId) {

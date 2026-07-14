@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/select'
 import { Search } from 'lucide-react'
 import BlogCard from './BlogCard'
-import { deduplicatePosts } from '@/lib/posts'
 
 const API_BASE_URL = 'https://blog-post-project-api.vercel.app'
 
@@ -100,7 +99,7 @@ function ArticleSection() {
     const [allPosts, setAllPosts] = useState([])
     const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
     const [isLoading, setIsLoading] = useState(true)
-
+    
     const filteredPosts = filterPostsByCategory(allPosts, activeCategory)
     const searchedPosts = filterPostsBySearch(filteredPosts, searchQuery)
     const displayedPosts = searchedPosts.slice(0, visibleCount)
@@ -132,7 +131,7 @@ function ArticleSection() {
           const response = await axios.get(`${API_BASE_URL}/posts`, {
             params: { limit: 30 },
           })
-          setAllPosts(deduplicatePosts(response.data.posts))
+          setAllPosts(response.data.posts)
         } catch (error) {
           console.error('Failed to fetch posts:', error)
           setAllPosts([])

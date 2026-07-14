@@ -62,7 +62,7 @@ function PostInteraction({ post }) {
 
   const shareUrl = encodeURIComponent(window.location.href)
   const shareTitle = encodeURIComponent(post.title)
-  const canInteract = isLoggedIn() && !isAdmin
+  const canInteract = !isAdmin
 
   const requireAuth = () => {
     if (isAdmin) return false
@@ -174,7 +174,7 @@ function PostInteraction({ post }) {
           <button
             type="submit"
             disabled={!canInteract}
-            className="rounded-full bg-stone-900 px-8 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-full bg-stone-900 px-8 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Send
           </button>
