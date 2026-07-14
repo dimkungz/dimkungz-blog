@@ -98,20 +98,17 @@ function ArticleSection() {
     const [activeCategory, setActiveCategory] = useState('Highlight')
     const [searchQuery, setSearchQuery] = useState('')
     const [allPosts, setAllPosts] = useState([])
-    const [currentPage, setCurrentPage] = useState(1)
+    const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
     const [isLoading, setIsLoading] = useState(true)
 
     const filteredPosts = filterPostsByCategory(allPosts, activeCategory)
     const searchedPosts = filterPostsBySearch(filteredPosts, searchQuery)
-    const totalPages = Math.max(1, Math.ceil(searchedPosts.length / POSTS_PER_PAGE))
-    const displayedPosts = searchedPosts.slice(
-      (currentPage - 1) * POSTS_PER_PAGE,
-      currentPage * POSTS_PER_PAGE,
-    )
+    const displayedPosts = searchedPosts.slice(0, visibleCount)
+    const hasMorePosts = visibleCount < searchedPosts.length
 
     const handleSearchChange = (value) => {
       setSearchQuery(value)
-      setCurrentPage(1)
+      setVisibleCount(POSTS_PER_PAGE)
     }
 
     const handleSearchSelect = (post) => {
@@ -122,12 +119,11 @@ function ArticleSection() {
     const handleCategoryChange = (event, category) => {
       event.preventDefault()
       setActiveCategory(category)
-      setCurrentPage(1)
+      setVisibleCount(POSTS_PER_PAGE)
     }
 
-    const handlePageChange = (event, page) => {
-      event.preventDefault()
-      setCurrentPage(page)
+    const handleViewMore = () => {
+      setVisibleCount((count) => count + POSTS_PER_PAGE)
     }
 
     useEffect(() => {
@@ -171,7 +167,7 @@ function ArticleSection() {
               value={activeCategory}
               onValueChange={(category) => {
                 setActiveCategory(category)
-                setCurrentPage(1)
+                setVisibleCount(POSTS_PER_PAGE)
               }}
             >
               <SelectTrigger
@@ -240,44 +236,16 @@ function ArticleSection() {
             )}
         </div>
 
-        {!isLoading && totalPages > 1 && (
-          <nav
-            className="mt-10 flex items-center justify-center gap-2"
-            aria-label="Pagination"
-          >
+        {!isLoading && hasMorePosts && (
+          <div className="mt-10 flex justify-center">
             <button
               type="button"
-              onClick={(event) => handlePageChange(event, currentPage - 1)}
-              disabled={currentPage === 1}
-              className="cursor-pointer rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={handleViewMore}
+              className="cursor-pointer rounded-full border border-stone-300 px-6 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
             >
-              Previous
+              View more
             </button>
-
-            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-              <button
-                key={page}
-                type="button"
-                onClick={(event) => handlePageChange(event, page)}
-                className={`cursor-pointer rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                  currentPage === page
-                    ? 'bg-stone-900 text-white'
-                    : 'border border-stone-300 text-stone-700 hover:bg-stone-50'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-
-            <button
-              type="button"
-              onClick={(event) => handlePageChange(event, currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="cursor-pointer rounded-full border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next
-            </button>
-          </nav>
+          </div>
         )}
       </section>
     )
