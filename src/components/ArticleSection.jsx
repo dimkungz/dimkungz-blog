@@ -12,7 +12,7 @@ import {
 import { Search } from 'lucide-react'
 import BlogCard from './BlogCard'
 
-const API_BASE_URL = 'https://blog-post-project-api.vercel.app'
+const API_BASE_URL = 'https://dimkungz-blog-api.vercel.app/'
 
 const POSTS_PER_PAGE = 6
 
