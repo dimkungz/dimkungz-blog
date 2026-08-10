@@ -1,4 +1,4 @@
-import { API_BASE_URL, getAuthHeaders } from './api'
+import { API_BASE_URL, getAuthHeaders, parseApiResponse } from './api'
 import { formatRelativeTime } from './utils'
 
 function normalizeNotification(notification) {
@@ -37,12 +37,7 @@ export async function fetchNotifications() {
     headers: getAuthHeaders(),
   })
 
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(data.message || data.error || 'Failed to fetch notifications')
-  }
-
+  const data = await parseApiResponse(response)
   return (data.data ?? []).map(normalizeNotification)
 }
 
@@ -52,12 +47,7 @@ export async function markAllNotificationsRead() {
     headers: getAuthHeaders(),
   })
 
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(data.message || data.error || 'Failed to mark notifications as read')
-  }
-
+  await parseApiResponse(response)
   dispatchNotificationsChange()
 }
 
@@ -67,11 +57,6 @@ export async function markNotificationRead(id) {
     headers: getAuthHeaders(),
   })
 
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(data.message || data.error || 'Failed to mark notification as read')
-  }
-
+  await parseApiResponse(response)
   dispatchNotificationsChange()
 }

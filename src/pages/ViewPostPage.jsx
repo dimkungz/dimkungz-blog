@@ -8,7 +8,7 @@ import { isLoggedIn, DEFAULT_AVATAR } from '@/lib/auth'
 import { useAdminLoggedIn } from '@/hooks/useAdminLoggedIn'
 import { createComment, fetchComments } from '@/lib/comments'
 import { fetchPostLikes, togglePostLike } from '@/lib/likes'
-import { fetchPost, getValidPostId } from '@/lib/posts'
+import { fetchPost, getValidPostId, isPublishedPost } from '@/lib/posts'
 import { formatCommentDate, formatPostDate } from '@/lib/utils'
 import NotFoundPage from '@/pages/NotFoundPage'
 
@@ -307,6 +307,7 @@ function AuthorCard({ author, authorAvatar }) {
 
 function ViewPostPage() {
   const { postId } = useParams()
+  const isAdmin = useAdminLoggedIn()
   const validPostId = getValidPostId(postId)
   const [post, setPost] = useState(null)
   const [comments, setComments] = useState([])
@@ -325,6 +326,14 @@ function ViewPostPage() {
 
       try {
         const postData = await fetchPost(validPostId)
+
+        if (!isPublishedPost(postData) && !isAdmin) {
+          setError('Post not found.')
+          setPost(null)
+          setComments([])
+          return
+        }
+
         setPost(postData)
 
         try {
@@ -346,7 +355,7 @@ function ViewPostPage() {
     }
 
     loadPost()
-  }, [validPostId, shouldFetch])
+  }, [validPostId, shouldFetch, isAdmin])
 
   if (validPostId === null) {
     return <NotFoundPage />

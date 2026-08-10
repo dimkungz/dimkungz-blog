@@ -1,4 +1,4 @@
-import { API_BASE_URL, getAuthHeaders } from './api'
+import { API_BASE_URL, getAuthHeaders, parseApiResponse } from './api'
 
 const DEFAULT_AUTHOR = 'Thompson P.'
 const PAGE_SIZE = 6
@@ -47,11 +47,7 @@ export async function fetchPostsPage(page = 1, filters = {}) {
 
   const response = await fetch(`${API_BASE_URL}/posts?${params}`)
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch posts')
-  }
-
-  const data = await response.json()
+  const data = await parseApiResponse(response)
   return (data.data ?? []).map(normalizePost)
 }
 
@@ -89,12 +85,33 @@ export async function fetchPost(postId) {
 
   const response = await fetch(`${API_BASE_URL}/posts/${validPostId}`)
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch post')
+  const data = await parseApiResponse(response)
+  return normalizePost(data.data)
+}
+
+export async function createPost(formData) {
+  const response = await fetch(`${API_BASE_URL}/posts`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: formData,
+  })
+
+  return parseApiResponse(response)
+}
+
+export async function updatePost(postId, formData) {
+  const validPostId = getValidPostId(postId)
+  if (validPostId === null) {
+    throw new Error('Invalid post id')
   }
 
-  const data = await response.json()
-  return normalizePost(data.data)
+  const response = await fetch(`${API_BASE_URL}/posts/${validPostId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: formData,
+  })
+
+  return parseApiResponse(response)
 }
 
 export async function deletePost(postId) {
@@ -108,11 +125,5 @@ export async function deletePost(postId) {
     headers: getAuthHeaders(),
   })
 
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to delete post')
-  }
-
-  return data
+  return parseApiResponse(response)
 }
