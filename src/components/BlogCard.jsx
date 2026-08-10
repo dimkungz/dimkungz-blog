@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
+import { DEFAULT_AVATAR } from '@/lib/auth'
 
 function BlogCard(props) {
-  const { id, image, category, title, description, author, date } = props
+  const { id, image, category, title, description, author, authorAvatar, date } = props
 
   return (
     <div className="flex flex-col gap-4">
@@ -28,13 +29,17 @@ function BlogCard(props) {
         </p>
         <div className="flex items-center text-sm">
           <img
-            className="mr-2 h-8 w-8 rounded-full"
-            src="https://res.cloudinary.com/dcbpjtd1r/image/upload/v1728449784/my-blog-post/xgfy0xnvyemkklcqodkg.jpg"
+            className="mr-2 h-8 w-8 rounded-full object-cover"
+            src={authorAvatar || DEFAULT_AVATAR}
             alt={author}
           />
           <span>{author}</span>
-          <span className="mx-2 text-gray-300">|</span>
-          <span>{date}</span>
+          {date ? (
+            <>
+              <span className="mx-2 text-gray-300">|</span>
+              <span>{date}</span>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

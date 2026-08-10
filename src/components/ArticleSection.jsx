@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -11,8 +10,8 @@ import {
 } from '@/components/ui/select'
 import { Search } from 'lucide-react'
 import BlogCard from './BlogCard'
-
-const API_BASE_URL = 'https://dimkungz-blog-api.vercel.app/'
+import { fetchPublishedPosts } from '@/lib/posts'
+import { formatPostDate } from '@/lib/utils'
 
 const POSTS_PER_PAGE = 6
 
@@ -21,14 +20,6 @@ const articleCategories = ['Highlight', 'Cat', 'Inspiration', 'Ganeral']
 function getApiCategory(category) {
   if (category === 'Ganeral') return 'General'
   return category
-}
-
-function formatPostDate(dateString) {
-  return new Date(dateString).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
 }
 
 function filterPostsByCategory(posts, activeCategory) {
@@ -126,12 +117,10 @@ function ArticleSection() {
     }
 
     useEffect(() => {
-      const fetchPosts = async () => {
+      const loadPosts = async () => {
         try {
-          const response = await axios.get(`${API_BASE_URL}/posts`, {
-            params: { limit: 30 },
-          })
-          setAllPosts(response.data.posts)
+          const posts = await fetchPublishedPosts()
+          setAllPosts(posts)
         } catch (error) {
           console.error('Failed to fetch posts:', error)
           setAllPosts([])
@@ -140,7 +129,7 @@ function ArticleSection() {
         }
       }
 
-      fetchPosts()
+      loadPosts()
     }, [])
     return (
       <section className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
@@ -229,6 +218,7 @@ function ArticleSection() {
                   title={post.title}
                   description={post.description}
                   author={post.author}
+                  authorAvatar={post.authorAvatar}
                   date={formatPostDate(post.date)}
                 />
               ))

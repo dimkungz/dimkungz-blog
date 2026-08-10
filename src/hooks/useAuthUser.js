@@ -1,18 +1,31 @@
 import { useEffect, useState } from 'react'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, restoreSession } from '@/lib/auth'
 
 export function useAuthUser() {
   const [user, setUser] = useState(getCurrentUser)
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    const syncUser = () => setUser(getCurrentUser())
-    window.addEventListener('auth-change', syncUser)
-    window.addEventListener('storage', syncUser)
+    let isMounted = true
+
+    const syncUser = async () => {
+      const restored = await restoreSession()
+      if (isMounted) {
+        setUser(restored ?? getCurrentUser())
+        setIsReady(true)
+      }
+    }
+
+    const handleAuthChange = () => setUser(getCurrentUser())
+
+    syncUser()
+    window.addEventListener('auth-change', handleAuthChange)
+
     return () => {
-      window.removeEventListener('auth-change', syncUser)
-      window.removeEventListener('storage', syncUser)
+      isMounted = false
+      window.removeEventListener('auth-change', handleAuthChange)
     }
   }, [])
 
-  return user
+  return { user: isReady ? user : getCurrentUser(), isReady }
 }

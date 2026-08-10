@@ -9,7 +9,6 @@ import {
   User,
 } from 'lucide-react'
 import { adminLogout } from '@/lib/admin'
-import { clearAdminNotifications } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -25,7 +24,6 @@ export function AdminSidebar({ activePage }) {
 
   const handleLogout = () => {
     adminLogout()
-    clearAdminNotifications()
     navigate('/')
   }
 

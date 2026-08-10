@@ -15,35 +15,51 @@ import { adminLogout } from '@/lib/admin'
 import { useAuthUser } from '@/hooks/useAuthUser'
 import { useAdminLoggedIn } from '@/hooks/useAdminLoggedIn'
 import {
-  clearAdminNotifications,
-  getNotifications,
-  getUnreadCount,
+  fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   getNotificationSummary,
 } from '@/lib/notifications'
 
 function useNotifications() {
-  const [notifications, setNotifications] = useState(getNotifications)
-  const [unreadCount, setUnreadCount] = useState(getUnreadCount)
+  const isAdmin = useAdminLoggedIn()
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  const syncNotifications = async () => {
+    if (!isAdmin) {
+      setNotifications([])
+      setUnreadCount(0)
+      return
+    }
+
+    try {
+      const data = await fetchNotifications()
+      setNotifications(data)
+      setUnreadCount(data.filter((notification) => !notification.read).length)
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+      setNotifications([])
+      setUnreadCount(0)
+    }
+  }
 
   useEffect(() => {
-    const syncNotifications = () => {
-      setNotifications(getNotifications())
-      setUnreadCount(getUnreadCount())
-    }
+    syncNotifications()
 
     window.addEventListener('notifications-change', syncNotifications)
     window.addEventListener('admin-auth-change', syncNotifications)
-    window.addEventListener('storage', syncNotifications)
+
+    const interval = isAdmin ? setInterval(syncNotifications, 30000) : null
+
     return () => {
       window.removeEventListener('notifications-change', syncNotifications)
       window.removeEventListener('admin-auth-change', syncNotifications)
-      window.removeEventListener('storage', syncNotifications)
+      if (interval) clearInterval(interval)
     }
-  }, [])
+  }, [isAdmin])
 
-  return { notifications, unreadCount }
+  return { notifications, unreadCount, refreshNotifications: syncNotifications }
 }
 
 function useClickOutside(ref, handler, enabled) {
@@ -63,7 +79,7 @@ function useClickOutside(ref, handler, enabled) {
 
 function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
   const navigate = useNavigate()
-  const user = useAuthUser()
+  const { user } = useAuthUser()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const profileRef = useRef(null)
 
@@ -197,7 +213,8 @@ function LoggedInNavActions({ onMobileNavigate, variant = 'desktop' }) {
 
 function AdminNavActions({ onMobileNavigate, variant = 'desktop' }) {
   const navigate = useNavigate()
-  const { notifications, unreadCount } = useNotifications()
+  const { user } = useAuthUser()
+  const { notifications, unreadCount, refreshNotifications } = useNotifications()
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const notificationsRef = useRef(null)
@@ -208,7 +225,6 @@ function AdminNavActions({ onMobileNavigate, variant = 'desktop' }) {
 
   const handleLogout = () => {
     adminLogout()
-    clearAdminNotifications()
     setShowProfileMenu(false)
     onMobileNavigate?.()
     navigate('/')
@@ -217,8 +233,11 @@ function AdminNavActions({ onMobileNavigate, variant = 'desktop' }) {
   const handleToggleNotifications = () => {
     setShowNotifications((open) => {
       const nextOpen = !open
-      if (nextOpen && unreadCount > 0) {
-        markAllNotificationsRead()
+      if (nextOpen) {
+        refreshNotifications()
+        if (unreadCount > 0) {
+          markAllNotificationsRead().then(() => refreshNotifications())
+        }
       }
       return nextOpen
     })
@@ -229,6 +248,9 @@ function AdminNavActions({ onMobileNavigate, variant = 'desktop' }) {
     setShowProfileMenu((open) => !open)
     setShowNotifications(false)
   }
+
+  const adminAvatar = user?.avatar || DEFAULT_AVATAR
+  const adminName = user?.name || 'Admin'
 
   const profileMenuItems = [
     {
@@ -278,7 +300,10 @@ function AdminNavActions({ onMobileNavigate, variant = 'desktop' }) {
             <button
               key={notification.id}
               type="button"
-              onClick={() => markNotificationRead(notification.id)}
+              onClick={() => {
+                markNotificationRead(notification.id)
+                refreshNotifications()
+              }}
               className={`flex w-full cursor-pointer flex-col gap-1 border-b border-stone-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-stone-50 ${
                 notification.read ? 'bg-white' : 'bg-stone-50/80'
               }`}
@@ -329,11 +354,11 @@ function AdminNavActions({ onMobileNavigate, variant = 'desktop' }) {
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <img
-                src={DEFAULT_AVATAR}
-                alt="Admin"
+                src={adminAvatar}
+                alt={adminName}
                 className="h-10 w-10 shrink-0 rounded-full object-cover"
               />
-              <span className="truncate text-sm font-medium text-stone-900">Admin</span>
+              <span className="truncate text-sm font-medium text-stone-900">{adminName}</span>
             </div>
             {notificationBellButton}
           </div>
@@ -404,12 +429,12 @@ function AdminNavActions({ onMobileNavigate, variant = 'desktop' }) {
           aria-expanded={showProfileMenu}
         >
           <img
-            src={DEFAULT_AVATAR}
-            alt="Admin"
+            src={adminAvatar}
+            alt={adminName}
             className="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10"
           />
           <span className="hidden max-w-[120px] truncate text-sm font-medium text-stone-900 sm:inline sm:max-w-none">
-            Admin
+            {adminName}
           </span>
           <ChevronDown
             className={`hidden h-4 w-4 text-stone-500 transition-transform sm:block ${
@@ -455,7 +480,7 @@ export function NavBar() {
   const topBarRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
-  const user = useAuthUser()
+  const { user } = useAuthUser()
   const isAdmin = useAdminLoggedIn()
 
   const loginButtonClass =

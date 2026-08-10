@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { isEmailTaken, isUsernameTaken, registerMember } from '@/lib/members'
+import { registerWithApi } from '@/lib/auth'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function SignUpPage() {
   const [isSuccess, setIsSuccess] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState({})
   const [formData, setFormData] = useState({
     name: '',
@@ -23,7 +24,7 @@ function SignUpPage() {
     setErrors((current) => ({ ...current, [name]: undefined }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     const nextErrors = {}
@@ -44,22 +45,30 @@ function SignUpPage() {
       nextErrors.password = 'Password must be at least 6 characters'
     }
 
-    if (!nextErrors.username && isUsernameTaken(formData.username)) {
-      nextErrors.username = 'Username is already taken, Please try another username'
-    }
-
-    if (!nextErrors.email && isEmailTaken(formData.email)) {
-      nextErrors.email = 'Email is already in use, Please try another email'
-    }
-
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       return
     }
 
-    registerMember(formData)
-    setErrors({})
-    setIsSuccess(true)
+    setIsSubmitting(true)
+
+    try {
+      await registerWithApi(formData)
+      setErrors({})
+      setIsSuccess(true)
+    } catch (error) {
+      const message = error.message || 'Registration failed'
+
+      if (message.toLowerCase().includes('username')) {
+        setErrors({ username: message })
+      } else if (message.toLowerCase().includes('email')) {
+        setErrors({ email: message })
+      } else {
+        setErrors({ email: message })
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const inputClass = (hasError) =>
@@ -155,9 +164,10 @@ function SignUpPage() {
 
             <button
               type="submit"
-              className="mt-2 self-center cursor-pointer rounded-full bg-stone-900 px-10 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800"
+              disabled={isSubmitting}
+              className="mt-2 self-center cursor-pointer rounded-full bg-stone-900 px-10 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Sign up
+              {isSubmitting ? 'Signing up...' : 'Sign up'}
             </button>
           </form>
 

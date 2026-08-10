@@ -2,9 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
-import { logout } from '@/lib/auth'
 import { adminLogin } from '@/lib/admin'
-import { initializeAdminNotifications } from '@/lib/notifications'
 import { useAdminLoggedIn } from '@/hooks/useAdminLoggedIn'
 import { cn } from '@/lib/utils'
 
@@ -12,6 +10,7 @@ function AdminLoginPage() {
   const navigate = useNavigate()
   const isAdmin = useAdminLoggedIn()
   const [hasLoginError, setHasLoginError] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -27,22 +26,25 @@ function AdminLoginPage() {
     setHasLoginError(false)
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
+    setIsSubmitting(true)
 
-    const success = adminLogin(formData.email, formData.password)
+    try {
+      const success = await adminLogin(formData.email, formData.password)
 
-    if (!success) {
-      setHasLoginError(true)
-      toast.error("Your password is incorrect or this email doesn't exist", {
-        description: 'Please try another password or email',
-      })
-      return
+      if (!success) {
+        setHasLoginError(true)
+        toast.error("Your password is incorrect or this email doesn't exist", {
+          description: 'Please try another password or email',
+        })
+        return
+      }
+
+      navigate('/admin/articles')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    logout()
-    initializeAdminNotifications()
-    navigate('/admin/articles')
   }
 
   const inputClass = cn(
@@ -93,9 +95,10 @@ function AdminLoginPage() {
 
           <button
             type="submit"
-            className="mt-2 self-center cursor-pointer rounded-full bg-stone-900 px-10 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800"
+            disabled={isSubmitting}
+            className="mt-2 self-center cursor-pointer rounded-full bg-stone-900 px-10 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Log in
+            {isSubmitting ? 'Logging in...' : 'Log in'}
           </button>
         </form>
       </div>

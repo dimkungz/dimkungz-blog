@@ -3,17 +3,17 @@ import { Navigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AccountPageHeader, AccountSidebar } from '@/components/AccountSidebar'
 import { Input } from '@/components/ui/input'
-import { DEFAULT_AVATAR, isLoggedIn, updateCurrentUser } from '@/lib/auth'
-import { useAuthUser } from '@/hooks/useAuthUser'
 import {
-  getMemberByEmail,
-  isUsernameTakenByOther,
-  updateMemberProfile,
-} from '@/lib/members'
+  DEFAULT_AVATAR,
+  isLoggedIn,
+  updateProfileWithApi,
+  validateProfileImage,
+} from '@/lib/auth'
+import { useAuthUser } from '@/hooks/useAuthUser'
 import { cn } from '@/lib/utils'
 
 function ProfilePage() {
-  const user = useAuthUser()
+  const { user, isReady } = useAuthUser()
   const fileInputRef = useRef(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -21,19 +21,37 @@ function ProfilePage() {
     email: '',
   })
   const [avatar, setAvatar] = useState(DEFAULT_AVATAR)
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
     if (!user) return
 
-    const member = getMemberByEmail(user.email)
     setFormData({
       name: user.name,
       username: user.username,
       email: user.email,
     })
-    setAvatar(user.avatar || member?.avatar || DEFAULT_AVATAR)
+    setAvatar(user.avatar || DEFAULT_AVATAR)
   }, [user?.email, user?.name, user?.username, user?.avatar])
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
+  if (!isReady) {
+    return (
+      <main className="flex flex-1 items-center justify-center bg-neutral-100 px-6 py-12">
+        <p className="text-stone-500">Loading profile...</p>
+      </main>
+    )
+  }
 
   if (!isLoggedIn() || !user) {
     return <Navigate to="/login" replace />
@@ -49,16 +67,25 @@ function ProfilePage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setAvatar(reader.result)
-      }
+    try {
+      validateProfileImage(file)
+    } catch (error) {
+      toast.error('Invalid image', { description: error.message })
+      event.target.value = ''
+      return
     }
-    reader.readAsDataURL(file)
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+
+    setAvatarFile(file)
+    const nextPreviewUrl = URL.createObjectURL(file)
+    setPreviewUrl(nextPreviewUrl)
+    setAvatar(nextPreviewUrl)
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     const nextErrors = {}
@@ -71,34 +98,44 @@ function ProfilePage() {
       nextErrors.username = 'Username is required'
     }
 
-    if (
-      !nextErrors.username &&
-      isUsernameTakenByOther(formData.username, user.email)
-    ) {
-      nextErrors.username = 'Username is already taken, Please try another username'
-    }
-
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       return
     }
 
-    updateMemberProfile(user.email, {
-      name: formData.name,
-      username: formData.username,
-      avatar,
-    })
+    setIsSaving(true)
 
-    updateCurrentUser({
-      name: formData.name.trim(),
-      username: formData.username.trim(),
-      avatar,
-    })
+    try {
+      const updatedUser = await updateProfileWithApi({
+        name: formData.name.trim(),
+        username: formData.username.trim(),
+        profilePicFile: avatarFile,
+      })
 
-    setErrors({})
-    toast.success('Saved profile', {
-      description: 'Your profile has been successfully updated',
-    })
+      setAvatarFile(null)
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
+
+      setAvatar(updatedUser.avatar || DEFAULT_AVATAR)
+
+      setErrors({})
+      toast.success('Saved profile', {
+        description: 'Your profile has been successfully updated',
+      })
+    } catch (error) {
+      const message = error.message || 'Failed to update profile'
+      console.error('Failed to update profile:', error)
+
+      if (message.toLowerCase().includes('username')) {
+        setErrors({ username: message })
+      } else {
+        toast.error('Failed to save profile', { description: message })
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const inputClass = (hasError) =>
@@ -130,14 +167,15 @@ function ProfilePage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
                     className="hidden"
                     onChange={handleAvatarChange}
                   />
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="cursor-pointer rounded-full border border-stone-900 bg-white px-5 py-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50"
+                    disabled={isSaving}
+                    className="cursor-pointer rounded-full border border-stone-900 bg-white px-5 py-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Upload profile picture
                   </button>
@@ -196,9 +234,10 @@ function ProfilePage() {
 
               <button
                 type="submit"
-                className="w-fit cursor-pointer rounded-full bg-stone-900 px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800"
+                disabled={isSaving}
+                className="w-fit cursor-pointer rounded-full bg-stone-900 px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Save
+                {isSaving ? 'Saving...' : 'Save'}
               </button>
             </form>
           </div>
