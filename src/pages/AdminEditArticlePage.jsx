@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import axios from 'axios'
 import { ImageIcon, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/AdminLayout'
@@ -14,8 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { getAdminProfile } from '@/lib/admin'
-import { getAuthHeaders } from '@/lib/api'
-import { API_BASE_URL, deletePost, fetchPost, getValidPostId } from '@/lib/posts'
+import { deletePost, fetchPost, getValidPostId, updatePost } from '@/lib/posts'
 import { cn } from '@/lib/utils'
 
 const CATEGORY_OPTIONS = ['Cat', 'General', 'Inspiration']
@@ -152,10 +150,8 @@ function AdminEditArticlePage() {
       payload.append('imageFile', imageFile)
     }
 
-    const headers = getAuthHeaders()
-
     try {
-      await axios.put(`${API_BASE_URL}/posts/${validArticleId}`, payload, { headers })
+      await updatePost(validArticleId, payload)
 
       const message =
         status === 'draft'
@@ -170,7 +166,7 @@ function AdminEditArticlePage() {
     } catch (error) {
       console.error('Failed to update article:', error)
       toast.error('Failed to update article', {
-        description: 'Please try again.',
+        description: error.message || 'Please try again.',
       })
     } finally {
       setIsSaving(false)

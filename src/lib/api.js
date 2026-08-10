@@ -24,6 +24,16 @@ export function getAuthHeaders(extraHeaders = {}) {
   }
 }
 
+export async function parseApiResponse(response) {
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.error || data.message || `Request failed (${response.status})`)
+  }
+
+  return data
+}
+
 export async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -34,11 +44,5 @@ export async function apiRequest(path, options = {}) {
     },
   })
 
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(data.error || data.message || 'Request failed')
-  }
-
-  return data
+  return parseApiResponse(response)
 }

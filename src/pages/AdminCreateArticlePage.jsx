@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import { ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/AdminLayout'
@@ -13,8 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { getAdminProfile } from '@/lib/admin'
-import { getAuthHeaders } from '@/lib/api'
-import { API_BASE_URL } from '@/lib/posts'
+import { createPost } from '@/lib/posts'
 import { cn } from '@/lib/utils'
 const CATEGORY_OPTIONS = ['Cat', 'General', 'Inspiration']
 const CATEGORY_ID_MAP = {
@@ -137,10 +135,8 @@ function AdminCreateArticlePage() {
     payload.append('status_id', STATUS_ID_MAP[status])
     payload.append('imageFile', imageFile)
 
-    const headers = getAuthHeaders()
-
     try {
-      await axios.post(`${API_BASE_URL}/posts`, payload, { headers })
+      await createPost(payload)
 
       const message =
         status === 'draft'
@@ -155,7 +151,7 @@ function AdminCreateArticlePage() {
     } catch (error) {
       console.error('Failed to create article:', error)
       toast.error('Failed to create article', {
-        description: 'Please try again.',
+        description: error.message || 'Please try again.',
       })
     } finally {
       setIsLoading(false)

@@ -1,4 +1,4 @@
-import { API_BASE_URL, getAuthHeaders } from './api'
+import { API_BASE_URL, getAuthHeaders, parseApiResponse } from './api'
 
 export function normalizeComment(comment) {
   return {
@@ -12,12 +12,7 @@ export function normalizeComment(comment) {
 
 export async function fetchComments(postId) {
   const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`)
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch comments')
-  }
-
-  const data = await response.json()
+  const data = await parseApiResponse(response)
   return (data.data ?? []).map(normalizeComment)
 }
 
@@ -31,11 +26,6 @@ export async function createComment(postId, commentText) {
     body: JSON.stringify({ comment_text: commentText }),
   })
 
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(data.error || data.message || 'Failed to post comment')
-  }
-
+  const data = await parseApiResponse(response)
   return normalizeComment(data.data)
 }
