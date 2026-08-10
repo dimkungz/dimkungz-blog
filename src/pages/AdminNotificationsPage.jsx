@@ -1,32 +1,54 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AdminLayout } from '@/components/AdminLayout'
 import { DEFAULT_AVATAR } from '@/lib/auth'
 import {
+  fetchNotifications,
   getNotificationActionText,
-  getNotifications,
   markNotificationRead,
 } from '@/lib/notifications'
 
 function AdminNotificationsPage() {
-  const [notifications, setNotifications] = useState(getNotifications)
+  const [notifications, setNotifications] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const syncNotifications = () => setNotifications(getNotifications())
+  const loadNotifications = useCallback(async () => {
+    setIsLoading(true)
 
-    window.addEventListener('notifications-change', syncNotifications)
-    window.addEventListener('admin-auth-change', syncNotifications)
-    window.addEventListener('storage', syncNotifications)
-
-    return () => {
-      window.removeEventListener('notifications-change', syncNotifications)
-      window.removeEventListener('admin-auth-change', syncNotifications)
-      window.removeEventListener('storage', syncNotifications)
+    try {
+      const data = await fetchNotifications()
+      setNotifications(data)
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+      setNotifications([])
+    } finally {
+      setIsLoading(false)
     }
   }, [])
 
-  const handleView = (notification) => {
-    markNotificationRead(notification.id)
+  useEffect(() => {
+    loadNotifications()
+
+    window.addEventListener('notifications-change', loadNotifications)
+    window.addEventListener('admin-auth-change', loadNotifications)
+
+    return () => {
+      window.removeEventListener('notifications-change', loadNotifications)
+      window.removeEventListener('admin-auth-change', loadNotifications)
+    }
+  }, [loadNotifications])
+
+  const handleView = async (notification) => {
+    try {
+      await markNotificationRead(notification.id)
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notification.id ? { ...item, read: true } : item
+        )
+      )
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
+    }
   }
 
   return (
@@ -35,7 +57,9 @@ function AdminNotificationsPage() {
         <h1 className="text-2xl font-bold text-stone-900 sm:text-3xl">Notification</h1>
       </div>
 
-      {notifications.length === 0 ? (
+      {isLoading ? (
+        <p className="text-sm text-stone-500">Loading notifications...</p>
+      ) : notifications.length === 0 ? (
         <p className="text-sm text-stone-500">No notifications yet</p>
       ) : (
         <ul className="divide-y divide-stone-200">

@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { AdminLayout } from '@/components/AdminLayout'
 import { Input } from '@/components/ui/input'
 import { adminLogout, updateAdminPassword } from '@/lib/admin'
-import { clearAdminNotifications } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
 
 function AdminResetPasswordPage() {
@@ -52,8 +51,8 @@ function AdminResetPasswordPage() {
     setShowConfirmModal(true)
   }
 
-  const handleConfirmReset = () => {
-    const result = updateAdminPassword(formData.currentPassword, formData.newPassword)
+  const handleConfirmReset = async () => {
+    const result = await updateAdminPassword(formData.currentPassword, formData.newPassword)
 
     if (!result.ok) {
       setShowConfirmModal(false)
@@ -72,7 +71,6 @@ function AdminResetPasswordPage() {
       description: 'Your password has been successfully updated',
     })
     adminLogout()
-    clearAdminNotifications()
     navigate('/admin/login')
   }
 

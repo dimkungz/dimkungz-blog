@@ -13,9 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { getAdminProfile } from '@/lib/admin'
+import { getAuthHeaders } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/posts'
 import { cn } from '@/lib/utils'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 const CATEGORY_OPTIONS = ['Cat', 'General', 'Inspiration']
 const CATEGORY_ID_MAP = {
   Cat: 1,
@@ -24,7 +24,7 @@ const CATEGORY_ID_MAP = {
 }
 const STATUS_ID_MAP = {
   draft: 1,
-  published: 2,
+  publish: 2,
 }
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -137,11 +137,10 @@ function AdminCreateArticlePage() {
     payload.append('status_id', STATUS_ID_MAP[status])
     payload.append('imageFile', imageFile)
 
-    const token = localStorage.getItem('token')
-    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    const headers = getAuthHeaders()
 
     try {
-      await axios.post(`${API_BASE_URL}/api/posts`, payload, { headers })
+      await axios.post(`${API_BASE_URL}/posts`, payload, { headers })
 
       const message =
         status === 'draft'
@@ -196,7 +195,7 @@ function AdminCreateArticlePage() {
           <button
             type="submit"
             form="admin-create-article-form"
-            onClick={handleSave('published')}
+            onClick={handleSave('publish')}
             disabled={isLoading}
             className="cursor-pointer rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-6 sm:py-3"
           >

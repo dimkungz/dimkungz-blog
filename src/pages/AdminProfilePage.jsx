@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/AdminLayout'
 import { Input } from '@/components/ui/input'
-import { DEFAULT_AVATAR } from '@/lib/auth'
+import {
+  DEFAULT_AVATAR,
+  updateProfileWithApi,
+  validateProfileImage,
+} from '@/lib/auth'
 import { getAdminProfile, updateAdminProfile } from '@/lib/admin'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +21,9 @@ function AdminProfilePage() {
     bio: '',
   })
   const [avatar, setAvatar] = useState(DEFAULT_AVATAR)
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
@@ -30,6 +37,14 @@ function AdminProfilePage() {
     setAvatar(profile.avatar || DEFAULT_AVATAR)
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((current) => ({ ...current, [name]: value }))
@@ -40,16 +55,25 @@ function AdminProfilePage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setAvatar(reader.result)
-      }
+    try {
+      validateProfileImage(file)
+    } catch (error) {
+      toast.error('Invalid image', { description: error.message })
+      event.target.value = ''
+      return
     }
-    reader.readAsDataURL(file)
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+
+    setAvatarFile(file)
+    const nextPreviewUrl = URL.createObjectURL(file)
+    setPreviewUrl(nextPreviewUrl)
+    setAvatar(nextPreviewUrl)
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     const nextErrors = {}
@@ -67,17 +91,41 @@ function AdminProfilePage() {
       return
     }
 
-    updateAdminProfile({
-      name: formData.name.trim(),
-      username: formData.username.trim(),
-      bio: formData.bio.trim(),
-      avatar,
-    })
+    setIsSaving(true)
 
-    setErrors({})
-    toast.success('Saved profile', {
-      description: 'Your profile has been successfully updated',
-    })
+    try {
+      const updatedUser = await updateProfileWithApi({
+        name: formData.name.trim(),
+        username: formData.username.trim(),
+        profilePicFile: avatarFile,
+      })
+
+      updateAdminProfile({
+        bio: formData.bio.trim(),
+      })
+
+      setAvatarFile(null)
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
+
+      setAvatar(updatedUser.avatar || DEFAULT_AVATAR)
+      setErrors({})
+      toast.success('Saved profile', {
+        description: 'Your profile has been successfully updated',
+      })
+    } catch (error) {
+      const message = error.message || 'Failed to update profile'
+
+      if (message.toLowerCase().includes('username')) {
+        setErrors({ username: message })
+      } else {
+        toast.error('Failed to save profile', { description: message })
+      }
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const inputClass = (hasError) =>
@@ -95,9 +143,10 @@ function AdminProfilePage() {
         <button
           type="submit"
           form="admin-profile-form"
-          className="shrink-0 cursor-pointer rounded-full bg-stone-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 sm:px-8 sm:py-3"
+          disabled={isSaving}
+          className="shrink-0 cursor-pointer rounded-full bg-stone-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-8 sm:py-3"
         >
-          Save
+          {isSaving ? 'Saving...' : 'Save'}
         </button>
       </div>
 
@@ -116,14 +165,15 @@ function AdminProfilePage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/gif,image/webp"
               className="hidden"
               onChange={handleAvatarChange}
             />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="cursor-pointer rounded-full border border-stone-900 bg-white px-5 py-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50"
+              disabled={isSaving}
+              className="cursor-pointer rounded-full border border-stone-900 bg-white px-5 py-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Upload profile picture
             </button>

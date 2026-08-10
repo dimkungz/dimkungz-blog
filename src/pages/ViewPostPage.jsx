@@ -1,25 +1,52 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import { Copy, SmilePlus } from 'lucide-react'
 import { toast } from 'sonner'
 import AuthModal from '@/components/AuthModal'
-import { isLoggedIn } from '@/lib/auth'
+import { isLoggedIn, DEFAULT_AVATAR } from '@/lib/auth'
 import { useAdminLoggedIn } from '@/hooks/useAdminLoggedIn'
-import { getValidPostId } from '@/lib/posts'
+import { createComment, fetchComments } from '@/lib/comments'
+import { fetchPostLikes, togglePostLike } from '@/lib/likes'
+import { fetchPost, getValidPostId } from '@/lib/posts'
+import { formatCommentDate, formatPostDate } from '@/lib/utils'
 import NotFoundPage from '@/pages/NotFoundPage'
 
-const API_BASE_URL = 'https://dimkungz-blog-api.vercel.app/'
-const AUTHOR_AVATAR =
-  'https://res.cloudinary.com/dcbpjtd1r/image/upload/v1728449784/my-blog-post/xgfy0xnvyemkklcqodkg.jpg'
+function CommentItem({ comment }) {
+  return (
+    <article className="border-t border-stone-200 py-6 first:border-t-0 first:pt-0">
+      <div className="flex gap-3">
+        <img
+          src={comment.authorAvatar || DEFAULT_AVATAR}
+          alt={comment.author}
+          className="h-10 w-10 shrink-0 rounded-full object-cover"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-stone-900">{comment.author}</p>
+          <p className="text-sm text-stone-400">{formatCommentDate(comment.createdAt)}</p>
+          <p className="mt-3 text-sm leading-relaxed text-stone-600">{comment.text}</p>
+        </div>
+      </div>
+    </article>
+  )
+}
 
-function formatPostDate(dateString) {
-  return new Date(dateString).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+function CommentList({ comments, isLoading }) {
+  if (isLoading) {
+    return <p className="text-sm text-stone-500">Loading comments...</p>
+  }
+
+  if (comments.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="mt-2">
+      {comments.map((comment) => (
+        <CommentItem key={comment.id} comment={comment} />
+      ))}
+    </div>
+  )
 }
 
 function PostContent({ content }) {
@@ -53,12 +80,38 @@ function PostContent({ content }) {
   )
 }
 
-function PostInteraction({ post }) {
+function PostInteraction({ post, comments, isLoadingComments, onCommentPosted }) {
   const isAdmin = useAdminLoggedIn()
   const [likeCount, setLikeCount] = useState(post.likes)
   const [isLiked, setIsLiked] = useState(false)
+  const [isLoadingLikes, setIsLoadingLikes] = useState(true)
+  const [isTogglingLike, setIsTogglingLike] = useState(false)
   const [comment, setComment] = useState('')
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadLikes = async () => {
+      try {
+        const data = await fetchPostLikes(post.id)
+        if (!isMounted) return
+        setLikeCount(data.count)
+        setIsLiked(data.liked)
+      } catch (error) {
+        console.error('Failed to fetch likes:', error)
+      } finally {
+        if (isMounted) setIsLoadingLikes(false)
+      }
+    }
+
+    loadLikes()
+
+    return () => {
+      isMounted = false
+    }
+  }, [post.id])
 
   const shareUrl = encodeURIComponent(window.location.href)
   const shareTitle = encodeURIComponent(post.title)
@@ -71,12 +124,25 @@ function PostInteraction({ post }) {
     return false
   }
 
-  const handleLike = () => {
+  const handleLike = async () => {
     if (!canInteract) return
     if (!requireAuth()) return
+    if (isTogglingLike) return
 
-    setLikeCount((count) => (isLiked ? count - 1 : count + 1))
-    setIsLiked((liked) => !liked)
+    setIsTogglingLike(true)
+
+    try {
+      const data = await togglePostLike(post.id)
+      setLikeCount(data.count)
+      setIsLiked(data.liked)
+    } catch (error) {
+      console.error('Failed to toggle like:', error)
+      toast.error('Failed to update like', {
+        description: error.message || 'Please try again.',
+      })
+    } finally {
+      setIsTogglingLike(false)
+    }
   }
 
   const handleCopy = async () => {
@@ -90,12 +156,29 @@ function PostInteraction({ post }) {
     }
   }
 
-  const handleSendComment = (event) => {
+  const handleSendComment = async (event) => {
     event.preventDefault()
     if (!canInteract) return
     if (!comment.trim()) return
     if (!requireAuth()) return
-    setComment('')
+
+    setIsSubmittingComment(true)
+
+    try {
+      const newComment = await createComment(post.id, comment.trim())
+      onCommentPosted(newComment)
+      setComment('')
+      toast.success('Comment posted', {
+        description: 'Your comment has been added.',
+      })
+    } catch (submitError) {
+      console.error('Failed to post comment:', submitError)
+      toast.error('Failed to post comment', {
+        description: submitError.message || 'Please try again.',
+      })
+    } finally {
+      setIsSubmittingComment(false)
+    }
   }
 
   const shareLinks = [
@@ -123,7 +206,7 @@ function PostInteraction({ post }) {
         <button
           type="button"
           onClick={handleLike}
-          disabled={!canInteract}
+          disabled={!canInteract || isLoadingLikes || isTogglingLike}
           className={`flex items-center gap-2 rounded-full border border-stone-900 bg-white px-4 py-2 text-sm font-medium transition-colors ${
             canInteract
               ? 'cursor-pointer hover:bg-stone-50'
@@ -167,20 +250,22 @@ function PostInteraction({ post }) {
           onChange={(event) => setComment(event.target.value)}
           placeholder="What are your thoughts?"
           rows={5}
-          disabled={!canInteract}
+          disabled={!canInteract || isSubmittingComment}
           className="w-full resize-none rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={!canInteract}
+            disabled={!canInteract || isSubmittingComment || !comment.trim()}
             className="cursor-pointer rounded-full bg-stone-900 px-8 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Send
+            {isSubmittingComment ? 'Sending...' : 'Send'}
           </button>
         </div>
       </form>
       )}
+
+      <CommentList comments={comments} isLoading={isLoadingComments} />
       </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
@@ -188,12 +273,12 @@ function PostInteraction({ post }) {
   )
 }
 
-function AuthorCard({ author }) {
+function AuthorCard({ author, authorAvatar }) {
   return (
     <aside className="rounded-2xl bg-neutral-100 p-6">
       <div className="flex items-center gap-3">
         <img
-          src={AUTHOR_AVATAR}
+          src={authorAvatar || DEFAULT_AVATAR}
           alt={author}
           className="h-11 w-11 rounded-full object-cover"
         />
@@ -224,30 +309,43 @@ function ViewPostPage() {
   const { postId } = useParams()
   const validPostId = getValidPostId(postId)
   const [post, setPost] = useState(null)
+  const [comments, setComments] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingComments, setIsLoadingComments] = useState(true)
   const [error, setError] = useState(null)
   const shouldFetch = validPostId !== null
 
   useEffect(() => {
     if (!shouldFetch) return
 
-    const fetchPost = async () => {
+    const loadPost = async () => {
       setIsLoading(true)
+      setIsLoadingComments(true)
       setError(null)
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/posts/${validPostId}`)
-        setPost(response.data)
+        const postData = await fetchPost(validPostId)
+        setPost(postData)
+
+        try {
+          const commentData = await fetchComments(validPostId)
+          setComments(commentData)
+        } catch (commentsError) {
+          console.error('Failed to fetch comments:', commentsError)
+          setComments([])
+        }
       } catch (fetchError) {
         console.error('Failed to fetch post:', fetchError)
         setError('Post not found.')
         setPost(null)
+        setComments([])
       } finally {
         setIsLoading(false)
+        setIsLoadingComments(false)
       }
     }
 
-    fetchPost()
+    loadPost()
   }, [validPostId, shouldFetch])
 
   if (validPostId === null) {
@@ -292,11 +390,19 @@ function ViewPostPage() {
           </h1>
 
           <PostContent content={post.content} />
-          <PostInteraction key={post.id} post={post} />
+          <PostInteraction
+            key={post.id}
+            post={post}
+            comments={comments}
+            isLoadingComments={isLoadingComments}
+            onCommentPosted={(newComment) => {
+              setComments((current) => [...current, newComment])
+            }}
+          />
         </article>
 
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <AuthorCard author={post.author} />
+          <AuthorCard author={post.author} authorAvatar={post.authorAvatar} />
         </div>
       </div>
     </main>
