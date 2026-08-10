@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { AdminLayout } from '@/components/AdminLayout'
-import { fetchPosts } from '@/lib/posts'
+import { fetchPosts, isDraftPost, isPublishedPost } from '@/lib/posts'
 import { cn } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['All status', 'Published', 'Draft']
@@ -31,8 +31,8 @@ function filterByCategory(posts, category) {
 
 function filterByStatus(posts, status) {
   if (status === 'All status') return posts
-  if (status === 'Published') return posts
-  return []
+  if (status === 'Published') return posts.filter(isPublishedPost)
+  return posts.filter(isDraftPost)
 }
 
 function AdminArticlesPage() {
@@ -189,9 +189,21 @@ function AdminArticlesPage() {
                     </td>
                     <td className="px-4 py-4 text-stone-600 sm:px-6">{post.category}</td>
                     <td className="px-4 py-4 sm:px-6">
-                      <span className="inline-flex items-center gap-1.5 text-emerald-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        Published
+                      <span
+                        className={`inline-flex items-center gap-1.5 ${
+                          isPublishedPost(post)
+                            ? 'text-emerald-600'
+                            : 'text-stone-500'
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isPublishedPost(post)
+                              ? 'bg-emerald-500'
+                              : 'bg-stone-400'
+                          }`}
+                        />
+                        {post.status ?? 'Unknown'}
                       </span>
                     </td>
                     <td className="px-4 py-4 sm:px-6">

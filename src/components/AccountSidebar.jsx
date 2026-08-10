@@ -5,7 +5,7 @@ import { useAuthUser } from '@/hooks/useAuthUser'
 import { cn } from '@/lib/utils'
 
 export function AccountSidebar({ activePage }) {
-  const user = useAuthUser()
+  const { user } = useAuthUser()
 
   const linkClass = (page) =>
     cn(
@@ -37,7 +37,7 @@ export function AccountSidebar({ activePage }) {
 }
 
 export function AccountPageHeader({ title }) {
-  const user = useAuthUser()
+  const { user } = useAuthUser()
   const avatar = user?.avatar || DEFAULT_AVATAR
 
   if (!user) return null

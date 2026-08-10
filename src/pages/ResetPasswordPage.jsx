@@ -4,13 +4,12 @@ import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { AccountPageHeader, AccountSidebar } from '@/components/AccountSidebar'
 import { Input } from '@/components/ui/input'
-import { isLoggedIn, logout } from '@/lib/auth'
+import { isLoggedIn, logout, resetPasswordWithApi } from '@/lib/auth'
 import { useAuthUser } from '@/hooks/useAuthUser'
-import { updateMemberPassword } from '@/lib/members'
 import { cn } from '@/lib/utils'
 
 function ResetPasswordPage() {
-  const user = useAuthUser()
+  const { user } = useAuthUser()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -58,14 +57,10 @@ function ResetPasswordPage() {
     setShowConfirmModal(true)
   }
 
-  const handleConfirmReset = () => {
-    const result = updateMemberPassword(
-      user.email,
-      formData.currentPassword,
-      formData.newPassword
-    )
-
-    if (!result.ok) {
+  const handleConfirmReset = async () => {
+    try {
+      await resetPasswordWithApi(formData.currentPassword, formData.newPassword)
+    } catch {
       setShowConfirmModal(false)
       setErrors({ currentPassword: 'Current password is incorrect' })
       return

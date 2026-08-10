@@ -7,9 +7,11 @@ export function useAdminLoggedIn() {
   useEffect(() => {
     const syncAdmin = () => setIsAdmin(isAdminLoggedIn())
     window.addEventListener('admin-auth-change', syncAdmin)
+    window.addEventListener('auth-change', syncAdmin)
     window.addEventListener('storage', syncAdmin)
     return () => {
       window.removeEventListener('admin-auth-change', syncAdmin)
+      window.removeEventListener('auth-change', syncAdmin)
       window.removeEventListener('storage', syncAdmin)
     }
   }, [])

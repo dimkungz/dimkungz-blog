@@ -1,74 +1,97 @@
-const ADMIN_SESSION_KEY = 'isAdminLoggedIn'
-const ADMIN_PROFILE_KEY = 'adminProfile'
-const ADMIN_PASSWORD_KEY = 'adminPassword'
+import { getToken } from './api'
+import {
+  getCurrentUser,
+  isLoggedIn,
+  loginWithApi,
+  logout,
+  resetPasswordWithApi,
+} from './auth'
 
-const ADMIN_CREDENTIALS = {
-  email: 'admin@hh.com',
-  password: 'admin123',
-}
+const ADMIN_PROFILE_KEY = 'adminProfile'
 
 const DEFAULT_ADMIN_PROFILE = {
-  name: 'Thompson P.',
-  username: 'thompson',
-  email: ADMIN_CREDENTIALS.email,
   bio: 'I am a pet enthusiast and freelance writer who specializes in animal behavior and care. With a deep love for cats.',
-  avatar: null,
 }
 
 export function isAdminLoggedIn() {
-  return localStorage.getItem(ADMIN_SESSION_KEY) === 'true'
+  const user = getCurrentUser()
+  return isLoggedIn() && user?.role === 'admin'
 }
 
 export function getAdminEmail() {
-  return ADMIN_CREDENTIALS.email
+  return getCurrentUser()?.email ?? ''
 }
 
-function getAdminPassword() {
-  return localStorage.getItem(ADMIN_PASSWORD_KEY) || ADMIN_CREDENTIALS.password
-}
+export async function adminLogin(email, password) {
+  try {
+    const user = await loginWithApi(email, password)
 
-export function adminLogin(email, password) {
-  const normalizedEmail = email.trim().toLowerCase()
+    if (user.role !== 'admin') {
+      logout()
+      return false
+    }
 
-  if (normalizedEmail !== ADMIN_CREDENTIALS.email || password !== getAdminPassword()) {
+    window.dispatchEvent(new Event('admin-auth-change'))
+    return true
+  } catch {
     return false
   }
-
-  localStorage.setItem(ADMIN_SESSION_KEY, 'true')
-  window.dispatchEvent(new Event('admin-auth-change'))
-  return true
 }
 
 export function adminLogout() {
-  localStorage.removeItem(ADMIN_SESSION_KEY)
+  logout()
   window.dispatchEvent(new Event('admin-auth-change'))
 }
 
 export function getAdminProfile() {
-  try {
-    const raw = localStorage.getItem(ADMIN_PROFILE_KEY)
-    if (!raw) return { ...DEFAULT_ADMIN_PROFILE }
+  const user = getCurrentUser()
+  const stored = (() => {
+    try {
+      const raw = localStorage.getItem(ADMIN_PROFILE_KEY)
+      return raw ? JSON.parse(raw) : {}
+    } catch {
+      return {}
+    }
+  })()
 
-    return { ...DEFAULT_ADMIN_PROFILE, ...JSON.parse(raw) }
-  } catch {
-    return { ...DEFAULT_ADMIN_PROFILE }
+  return {
+    name: user?.name ?? stored.name ?? 'Admin',
+    username: user?.username ?? stored.username ?? 'admin',
+    email: user?.email ?? stored.email ?? '',
+    avatar: user?.avatar ?? stored.avatar ?? null,
+    bio: stored.bio ?? DEFAULT_ADMIN_PROFILE.bio,
   }
 }
 
 export function updateAdminProfile(updates) {
-  const profile = getAdminProfile()
-  const nextProfile = { ...profile, ...updates }
+  const stored = (() => {
+    try {
+      const raw = localStorage.getItem(ADMIN_PROFILE_KEY)
+      return raw ? JSON.parse(raw) : {}
+    } catch {
+      return {}
+    }
+  })()
+
+  const nextProfile = {
+    ...stored,
+    ...(updates.bio !== undefined ? { bio: updates.bio } : {}),
+  }
 
   localStorage.setItem(ADMIN_PROFILE_KEY, JSON.stringify(nextProfile))
   window.dispatchEvent(new Event('admin-profile-change'))
-  return nextProfile
+  return getAdminProfile()
 }
 
-export function updateAdminPassword(currentPassword, newPassword) {
-  if (currentPassword !== getAdminPassword()) {
+export async function updateAdminPassword(currentPassword, newPassword) {
+  try {
+    await resetPasswordWithApi(currentPassword, newPassword)
+    return { ok: true }
+  } catch {
     return { ok: false }
   }
+}
 
-  localStorage.setItem(ADMIN_PASSWORD_KEY, newPassword)
-  return { ok: true }
+export function getAdminToken() {
+  return getToken()
 }
