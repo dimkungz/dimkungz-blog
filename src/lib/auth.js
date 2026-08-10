@@ -194,8 +194,3 @@ export async function restoreSession() {
     return getCurrentUser()
   }
 }
-
-// Backwards-compatible alias used by older pages
-export function login(user) {
-  setCurrentUser(user)
-}

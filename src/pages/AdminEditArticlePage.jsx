@@ -14,19 +14,13 @@ import {
 } from '@/components/ui/select'
 import { getAdminProfile } from '@/lib/admin'
 import { deletePost, fetchPost, getValidPostId, updatePost } from '@/lib/posts'
+import {
+  CATEGORY_ID_MAP,
+  CATEGORY_OPTIONS,
+  INTRO_MAX_LENGTH,
+  STATUS_ID_MAP,
+} from '@/lib/postForm'
 import { cn } from '@/lib/utils'
-
-const CATEGORY_OPTIONS = ['Cat', 'General', 'Inspiration']
-const CATEGORY_ID_MAP = {
-  Cat: 1,
-  General: 2,
-  Inspiration: 3,
-}
-const STATUS_ID_MAP = {
-  draft: 1,
-  publish: 2,
-}
-const INTRO_MAX_LENGTH = 120
 
 function AdminEditArticlePage() {
   const navigate = useNavigate()

@@ -43,7 +43,7 @@ function App() {
     <div className="flex min-h-screen flex-col bg-white font-sans antialiased">
       {!isAdminRoute && <NavBar />}
       <div className="flex flex-1 flex-col">
-        <Routes key={location.pathname}>
+        <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/post/:postId" element={<ViewPostPage />} />
           <Route path="/signup" element={<SignUpPage />} />
