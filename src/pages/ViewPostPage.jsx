@@ -10,7 +10,7 @@ import { useAdminLoggedIn } from '@/hooks/useAdminLoggedIn'
 import { getValidPostId } from '@/lib/posts'
 import NotFoundPage from '@/pages/NotFoundPage'
 
-const API_BASE_URL = 'https://blog-post-project-api.vercel.app'
+const API_BASE_URL = 'https://dimkungz-blog-api.vercel.app/'
 const AUTHOR_AVATAR =
   'https://res.cloudinary.com/dcbpjtd1r/image/upload/v1728449784/my-blog-post/xgfy0xnvyemkklcqodkg.jpg'
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/AdminLayout'
@@ -14,13 +15,27 @@ import {
 import { getAdminProfile } from '@/lib/admin'
 import { cn } from '@/lib/utils'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 const CATEGORY_OPTIONS = ['Cat', 'General', 'Inspiration']
+const CATEGORY_ID_MAP = {
+  Cat: 1,
+  General: 2,
+  Inspiration: 3,
+}
+const STATUS_ID_MAP = {
+  draft: 1,
+  published: 2,
+}
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const INTRO_MAX_LENGTH = 120
 
 function AdminCreateArticlePage() {
   const navigate = useNavigate()
   const thumbnailInputRef = useRef(null)
-  const [thumbnail, setThumbnail] = useState(null)
+  const [imageFile, setImageFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     category: '',
     authorName: '',
@@ -38,6 +53,14 @@ function AdminCreateArticlePage() {
     }))
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((current) => ({ ...current, [name]: value }))
@@ -48,13 +71,29 @@ function AdminCreateArticlePage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setThumbnail(reader.result)
-      }
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error('Invalid image type', {
+        description: 'Please upload a valid image file (JPEG, PNG, GIF, WebP).',
+      })
+      event.target.value = ''
+      return
     }
-    reader.readAsDataURL(file)
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error('File too large', {
+        description: 'Please upload an image smaller than 5MB.',
+      })
+      event.target.value = ''
+      return
+    }
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+
+    setImageFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+    setErrors((current) => ({ ...current, thumbnail: undefined }))
   }
 
   const validateForm = () => {
@@ -76,23 +115,52 @@ function AdminCreateArticlePage() {
       nextErrors.content = 'Content is required'
     }
 
+    if (!imageFile) {
+      nextErrors.thumbnail = 'Thumbnail image is required'
+    }
+
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
 
-  const handleSave = (status) => (event) => {
+  const handleSave = (status) => async (event) => {
     event.preventDefault()
     if (!validateForm()) return
 
-    const message =
-      status === 'draft'
-        ? 'You can publish article later'
-        : 'Your article has been successfully published'
+    setIsLoading(true)
 
-    toast.success(status === 'draft' ? 'Create article and saved as draft' : 'Create article and published', {
-      description: message,
-    })
-    navigate('/admin/articles')
+    const payload = new FormData()
+    payload.append('title', formData.title.trim())
+    payload.append('category_id', CATEGORY_ID_MAP[formData.category])
+    payload.append('description', formData.introduction.trim())
+    payload.append('content', formData.content.trim())
+    payload.append('status_id', STATUS_ID_MAP[status])
+    payload.append('imageFile', imageFile)
+
+    const token = localStorage.getItem('token')
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+
+    try {
+      await axios.post(`${API_BASE_URL}/api/posts`, payload, { headers })
+
+      const message =
+        status === 'draft'
+          ? 'You can publish article later'
+          : 'Your article has been successfully published'
+
+      toast.success(
+        status === 'draft' ? 'Create article and saved as draft' : 'Create article and published',
+        { description: message }
+      )
+      navigate('/admin/articles')
+    } catch (error) {
+      console.error('Failed to create article:', error)
+      toast.error('Failed to create article', {
+        description: 'Please try again.',
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const inputClass = (hasError) =>
@@ -120,17 +188,19 @@ function AdminCreateArticlePage() {
             type="submit"
             form="admin-create-article-form"
             onClick={handleSave('draft')}
-            className="cursor-pointer rounded-full border border-stone-900 bg-white px-5 py-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50 sm:px-6 sm:py-3"
+            disabled={isLoading}
+            className="cursor-pointer rounded-full border border-stone-900 bg-white px-5 py-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-6 sm:py-3"
           >
-            Save as draft
+            {isLoading ? 'Saving...' : 'Save as draft'}
           </button>
           <button
             type="submit"
             form="admin-create-article-form"
             onClick={handleSave('published')}
-            className="cursor-pointer rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 sm:px-6 sm:py-3"
+            disabled={isLoading}
+            className="cursor-pointer rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50 sm:px-6 sm:py-3"
           >
-            Save and publish
+            {isLoading ? 'Saving...' : 'Save and publish'}
           </button>
         </div>
       </div>
@@ -144,9 +214,9 @@ function AdminCreateArticlePage() {
           <p className="mb-2 block text-sm text-stone-500">Thumbnail image</p>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="flex h-40 w-full max-w-xs items-center justify-center overflow-hidden rounded-2xl bg-neutral-200 sm:h-36 sm:w-56">
-              {thumbnail ? (
+              {previewUrl ? (
                 <img
-                  src={thumbnail}
+                  src={previewUrl}
                   alt="Article thumbnail preview"
                   className="h-full w-full object-cover"
                 />
@@ -159,19 +229,23 @@ function AdminCreateArticlePage() {
               <input
                 ref={thumbnailInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/gif,image/webp"
                 className="hidden"
                 onChange={handleThumbnailChange}
               />
               <button
                 type="button"
                 onClick={() => thumbnailInputRef.current?.click()}
-                className="cursor-pointer rounded-full border border-stone-900 bg-white px-5 py-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50"
+                disabled={isLoading}
+                className="cursor-pointer rounded-full border border-stone-900 bg-white px-5 py-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Upload thumbnail image
               </button>
             </div>
           </div>
+          {errors.thumbnail && (
+            <p className="mt-2 text-sm text-red-500">{errors.thumbnail}</p>
+          )}
         </div>
 
         <div>
