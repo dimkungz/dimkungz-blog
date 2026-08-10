@@ -10,29 +10,20 @@ import {
 } from '@/components/ui/select'
 import { Search } from 'lucide-react'
 import BlogCard from './BlogCard'
-import { fetchPublishedPosts } from '@/lib/posts'
+import { fetchPosts } from '@/lib/posts'
 import { formatPostDate } from '@/lib/utils'
 
 const POSTS_PER_PAGE = 6
-
-const articleCategories = ['Highlight', 'Cat', 'Inspiration', 'Ganeral']
-
-function getApiCategory(category) {
-  if (category === 'Ganeral') return 'General'
-  return category
-}
+const ARTICLE_CATEGORIES = ['Highlight', 'Cat', 'Inspiration', 'General']
 
 function filterPostsByCategory(posts, activeCategory) {
   if (activeCategory === 'Highlight') return posts
-
-  const category = getApiCategory(activeCategory)
-  return posts.filter((post) => post.category === category)
+  return posts.filter((post) => post.category === activeCategory)
 }
 
 function filterPostsBySearch(posts, searchQuery) {
   const query = searchQuery.trim().toLowerCase()
   if (!query) return posts
-
   return posts.filter((post) => post.title.toLowerCase().includes(query))
 }
 
@@ -84,160 +75,155 @@ function ArticleSearchBar({ posts, value, onChange, onSelect, inputClassName }) 
 }
 
 function ArticleSection() {
-    const navigate = useNavigate()
-    const [activeCategory, setActiveCategory] = useState('Highlight')
-    const [searchQuery, setSearchQuery] = useState('')
-    const [allPosts, setAllPosts] = useState([])
-    const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
-    const [isLoading, setIsLoading] = useState(true)
-    
-    const filteredPosts = filterPostsByCategory(allPosts, activeCategory)
-    const searchedPosts = filterPostsBySearch(filteredPosts, searchQuery)
-    const displayedPosts = searchedPosts.slice(0, visibleCount)
-    const hasMorePosts = visibleCount < searchedPosts.length
+  const navigate = useNavigate()
+  const [activeCategory, setActiveCategory] = useState('Highlight')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [allPosts, setAllPosts] = useState([])
+  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
+  const [isLoading, setIsLoading] = useState(true)
 
-    const handleSearchChange = (value) => {
-      setSearchQuery(value)
-      setVisibleCount(POSTS_PER_PAGE)
-    }
+  const filteredPosts = filterPostsByCategory(allPosts, activeCategory)
+  const searchedPosts = filterPostsBySearch(filteredPosts, searchQuery)
+  const displayedPosts = searchedPosts.slice(0, visibleCount)
+  const hasMorePosts = visibleCount < searchedPosts.length
 
-    const handleSearchSelect = (post) => {
-      setSearchQuery('')
-      navigate(`/post/${post.id}`)
-    }
+  const handleSearchChange = (value) => {
+    setSearchQuery(value)
+    setVisibleCount(POSTS_PER_PAGE)
+  }
 
-    const handleCategoryChange = (event, category) => {
-      event.preventDefault()
-      setActiveCategory(category)
-      setVisibleCount(POSTS_PER_PAGE)
-    }
+  const handleSearchSelect = (post) => {
+    setSearchQuery('')
+    navigate(`/post/${post.id}`)
+  }
 
-    const handleViewMore = () => {
-      setVisibleCount((count) => count + POSTS_PER_PAGE)
-    }
+  const handleCategoryChange = (category) => {
+    setActiveCategory(category)
+    setVisibleCount(POSTS_PER_PAGE)
+  }
 
-    useEffect(() => {
-      const loadPosts = async () => {
-        try {
-          const posts = await fetchPublishedPosts()
-          setAllPosts(posts)
-        } catch (error) {
-          console.error('Failed to fetch posts:', error)
-          setAllPosts([])
-        } finally {
-          setIsLoading(false)
-        }
+  const handleViewMore = () => {
+    setVisibleCount((count) => count + POSTS_PER_PAGE)
+  }
+
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        const posts = await fetchPosts()
+        setAllPosts(posts)
+      } catch (error) {
+        console.error('Failed to fetch posts:', error)
+        setAllPosts([])
+      } finally {
+        setIsLoading(false)
       }
+    }
 
-      loadPosts()
-    }, [])
-    return (
-      <section className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
-        <h2 className="mb-6 text-2xl font-bold text-stone-900 sm:text-3xl">Latest articles</h2>
-  
-        <div className="flex flex-col gap-4 rounded-2xl bg-neutral-100 px-4 py-4 md:hidden">
+    loadPosts()
+  }, [])
+
+  return (
+    <section className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
+      <h2 className="mb-6 text-2xl font-bold text-stone-900 sm:text-3xl">Latest articles</h2>
+
+      <div className="flex flex-col gap-4 rounded-2xl bg-neutral-100 px-4 py-4 md:hidden">
+        <ArticleSearchBar
+          posts={filteredPosts}
+          value={searchQuery}
+          onChange={handleSearchChange}
+          onSelect={handleSearchSelect}
+          inputClassName="h-auto rounded-full border-stone-200 bg-white py-2.5 pr-10 pl-4 text-sm text-stone-500 shadow-none placeholder:text-stone-500"
+        />
+
+        <div>
+          <label
+            htmlFor="article-category-mobile"
+            className="mb-2 block text-sm text-stone-500"
+          >
+            Category
+          </label>
+          <Select value={activeCategory} onValueChange={handleCategoryChange}>
+            <SelectTrigger
+              id="article-category-mobile"
+              className="h-auto w-full cursor-pointer rounded-xl border-stone-200 bg-white py-2.5 pr-3 pl-4 text-sm text-stone-500 shadow-none"
+            >
+              <SelectValue placeholder="Highlight" />
+            </SelectTrigger>
+            <SelectContent>
+              {ARTICLE_CATEGORIES.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="hidden items-center justify-between gap-6 rounded-2xl bg-neutral-100 px-5 py-4 md:flex">
+        <div className="flex flex-wrap items-center gap-2">
+          {ARTICLE_CATEGORIES.map((category) => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => handleCategoryChange(category)}
+              className={`cursor-pointer rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+                activeCategory === category
+                  ? 'bg-neutral-200 text-stone-700'
+                  : 'text-stone-400 hover:bg-white hover:text-stone-600'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-full max-w-[360px]">
           <ArticleSearchBar
             posts={filteredPosts}
             value={searchQuery}
             onChange={handleSearchChange}
             onSelect={handleSearchSelect}
-            inputClassName="h-auto rounded-full border-stone-200 bg-white py-2.5 pr-10 pl-4 text-sm text-stone-500 shadow-none placeholder:text-stone-500"
+            inputClassName="h-auto rounded-full border border-stone-300 bg-white py-2.5 pr-10 pl-4 text-sm text-stone-900 shadow-none placeholder:text-stone-400"
           />
-  
-          <div>
-            <label
-              htmlFor="article-category-mobile"
-              className="mb-2 block text-sm text-stone-500"
-            >
-              Category
-            </label>
-            <Select
-              value={activeCategory}
-              onValueChange={(category) => {
-                setActiveCategory(category)
-                setVisibleCount(POSTS_PER_PAGE)
-              }}
-            >
-              <SelectTrigger
-                id="article-category-mobile"
-                className="h-auto w-full cursor-pointer rounded-xl border-stone-200 bg-white py-2.5 pr-3 pl-4 text-sm text-stone-500 shadow-none"
-              >
-                <SelectValue placeholder="Highlight" />
-              </SelectTrigger>
-              <SelectContent>
-                {articleCategories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
-  
-        <div className="hidden items-center justify-between gap-6 rounded-2xl bg-neutral-100 px-5 py-4 md:flex">
-          <div className="flex flex-wrap items-center gap-2">
-            {articleCategories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                onClick={(event) => handleCategoryChange(event, category)}
-                className={`cursor-pointer rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-                  activeCategory === category
-                    ? 'bg-neutral-200 text-stone-700'
-                    : 'text-stone-400 hover:text-stone-600 hover:bg-white'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-  
-          <div className="w-full max-w-[360px]">
-            <ArticleSearchBar
-              posts={filteredPosts}
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onSelect={handleSearchSelect}
-              inputClassName="h-auto rounded-full border border-stone-300 bg-white py-2.5 pr-10 pl-4 text-sm text-stone-900 shadow-none placeholder:text-stone-400"
+      </div>
+
+      <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
+        {isLoading ? (
+          <p className="text-stone-500 md:col-span-2">Loading articles...</p>
+        ) : displayedPosts.length === 0 ? (
+          <p className="text-stone-500 md:col-span-2">No articles found.</p>
+        ) : (
+          displayedPosts.map((post) => (
+            <BlogCard
+              key={post.id}
+              id={post.id}
+              image={post.image}
+              category={post.category}
+              title={post.title}
+              description={post.description}
+              author={post.author}
+              authorAvatar={post.authorAvatar}
+              date={formatPostDate(post.date)}
             />
-          </div>
-        </div>
-        <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
-            {isLoading ? (
-              <p className="text-stone-500 md:col-span-2">Loading articles...</p>
-            ) : displayedPosts.length === 0 ? (
-              <p className="text-stone-500 md:col-span-2">No articles found.</p>
-            ) : (
-              displayedPosts.map((post) => (
-                <BlogCard
-                  key={post.id}
-                  id={post.id}
-                  image={post.image}
-                  category={post.category}
-                  title={post.title}
-                  description={post.description}
-                  author={post.author}
-                  authorAvatar={post.authorAvatar}
-                  date={formatPostDate(post.date)}
-                />
-              ))
-            )}
-        </div>
-
-        {!isLoading && hasMorePosts && (
-          <div className="mt-10 flex justify-center">
-            <button
-              type="button"
-              onClick={handleViewMore}
-              className="cursor-pointer rounded-full border border-stone-300 px-6 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
-            >
-              View more
-            </button>
-          </div>
+          ))
         )}
-      </section>
-    )
-  }
+      </div>
 
-  export default ArticleSection
+      {!isLoading && hasMorePosts && (
+        <div className="mt-10 flex justify-center">
+          <button
+            type="button"
+            onClick={handleViewMore}
+            className="cursor-pointer rounded-full border border-stone-300 px-6 py-2.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
+          >
+            View more
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+export default ArticleSection

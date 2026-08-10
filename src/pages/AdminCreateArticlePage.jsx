@@ -13,20 +13,15 @@ import {
 } from '@/components/ui/select'
 import { getAdminProfile } from '@/lib/admin'
 import { createPost } from '@/lib/posts'
+import {
+  ALLOWED_IMAGE_TYPES,
+  CATEGORY_ID_MAP,
+  CATEGORY_OPTIONS,
+  INTRO_MAX_LENGTH,
+  MAX_IMAGE_SIZE,
+  STATUS_ID_MAP,
+} from '@/lib/postForm'
 import { cn } from '@/lib/utils'
-const CATEGORY_OPTIONS = ['Cat', 'General', 'Inspiration']
-const CATEGORY_ID_MAP = {
-  Cat: 1,
-  General: 2,
-  Inspiration: 3,
-}
-const STATUS_ID_MAP = {
-  draft: 1,
-  publish: 2,
-}
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024
-const INTRO_MAX_LENGTH = 120
 
 function AdminCreateArticlePage() {
   const navigate = useNavigate()

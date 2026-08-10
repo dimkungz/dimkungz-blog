@@ -13,10 +13,11 @@ import {
 } from '@/components/ui/select'
 import { AdminLayout } from '@/components/AdminLayout'
 import { deletePost, fetchPosts, isDraftPost, isPublishedPost } from '@/lib/posts'
+import { CATEGORY_OPTIONS as POST_CATEGORIES } from '@/lib/postForm'
 import { cn } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['All status', 'Published', 'Draft']
-const CATEGORY_OPTIONS = ['All category', 'Cat', 'General', 'Inspiration']
+const CATEGORY_OPTIONS = ['All category', ...POST_CATEGORIES]
 
 function filterBySearch(posts, query) {
   const normalized = query.trim().toLowerCase()

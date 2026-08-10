@@ -3,8 +3,6 @@ import { API_BASE_URL, getAuthHeaders, parseApiResponse } from './api'
 const DEFAULT_AUTHOR = 'Thompson P.'
 const PAGE_SIZE = 6
 
-export { API_BASE_URL }
-
 export function getValidPostId(postId) {
   const id = Number(postId)
 
@@ -45,7 +43,9 @@ export async function fetchPostsPage(page = 1, filters = {}) {
   if (filters.title) params.set('title', filters.title)
   if (filters.category) params.set('category', filters.category)
 
-  const response = await fetch(`${API_BASE_URL}/posts?${params}`)
+  const response = await fetch(`${API_BASE_URL}/posts?${params}`, {
+    headers: getAuthHeaders(),
+  })
 
   const data = await parseApiResponse(response)
   return (data.data ?? []).map(normalizePost)
@@ -72,18 +72,15 @@ export async function fetchPosts(options = {}) {
   return allPosts
 }
 
-export async function fetchPublishedPosts() {
-  const posts = await fetchPosts()
-  return posts.filter(isPublishedPost)
-}
-
 export async function fetchPost(postId) {
   const validPostId = getValidPostId(postId)
   if (validPostId === null) {
     throw new Error('Invalid post id')
   }
 
-  const response = await fetch(`${API_BASE_URL}/posts/${validPostId}`)
+  const response = await fetch(`${API_BASE_URL}/posts/${validPostId}`, {
+    headers: getAuthHeaders(),
+  })
 
   const data = await parseApiResponse(response)
   return normalizePost(data.data)
