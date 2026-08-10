@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { AdminLayout } from '@/components/AdminLayout'
-import { fetchPosts, isDraftPost, isPublishedPost } from '@/lib/posts'
+import { deletePost, fetchPosts, isDraftPost, isPublishedPost } from '@/lib/posts'
 import { cn } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['All status', 'Published', 'Draft']
@@ -43,6 +43,7 @@ function AdminArticlesPage() {
   const [statusFilter, setStatusFilter] = useState('All status')
   const [categoryFilter, setCategoryFilter] = useState('All category')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -76,11 +77,26 @@ function AdminArticlesPage() {
   const selectTriggerClass =
     'h-auto w-full min-w-[8.5rem] cursor-pointer rounded-xl border-stone-200 bg-white py-2.5 pr-3 pl-4 text-sm text-stone-500 shadow-none'
 
-  const handleConfirmDelete = () => {
-    setDeleteTarget(null)
-    toast.success('Article deleted', {
-      description: 'The article has been removed',
-    })
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+
+    setIsDeleting(true)
+
+    try {
+      await deletePost(deleteTarget.id)
+      setPosts((current) => current.filter((post) => post.id !== deleteTarget.id))
+      setDeleteTarget(null)
+      toast.success('Article deleted', {
+        description: 'The article has been removed',
+      })
+    } catch (error) {
+      console.error('Failed to delete article:', error)
+      toast.error('Failed to delete article', {
+        description: error.message || 'Please try again.',
+      })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -236,7 +252,9 @@ function AdminArticlesPage() {
 
       <DeleteArticleModal
         open={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => {
+          if (!isDeleting) setDeleteTarget(null)
+        }}
         onConfirm={handleConfirmDelete}
       />
     </AdminLayout>
