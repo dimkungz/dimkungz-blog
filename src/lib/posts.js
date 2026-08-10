@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api'
+import { API_BASE_URL, getAuthHeaders } from './api'
 
 const DEFAULT_AUTHOR = 'Thompson P.'
 const PAGE_SIZE = 6
@@ -95,4 +95,24 @@ export async function fetchPost(postId) {
 
   const data = await response.json()
   return normalizePost(data.data)
+}
+
+export async function deletePost(postId) {
+  const validPostId = getValidPostId(postId)
+  if (validPostId === null) {
+    throw new Error('Invalid post id')
+  }
+
+  const response = await fetch(`${API_BASE_URL}/posts/${validPostId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to delete post')
+  }
+
+  return data
 }

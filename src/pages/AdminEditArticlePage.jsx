@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select'
 import { getAdminProfile } from '@/lib/admin'
 import { getAuthHeaders } from '@/lib/api'
-import { API_BASE_URL, fetchPost, getValidPostId } from '@/lib/posts'
+import { API_BASE_URL, deletePost, fetchPost, getValidPostId } from '@/lib/posts'
 import { cn } from '@/lib/utils'
 
 const CATEGORY_OPTIONS = ['Cat', 'General', 'Inspiration']
@@ -48,6 +48,7 @@ function AdminEditArticlePage() {
   })
   const [errors, setErrors] = useState({})
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (validArticleId === null) return undefined
@@ -176,12 +177,24 @@ function AdminEditArticlePage() {
     }
   }
 
-  const handleDelete = () => {
-    setShowDeleteModal(false)
-    toast.success('Article deleted', {
-      description: 'The article has been removed',
-    })
-    navigate('/admin/articles')
+  const handleDelete = async () => {
+    setIsDeleting(true)
+
+    try {
+      await deletePost(validArticleId)
+      setShowDeleteModal(false)
+      toast.success('Article deleted', {
+        description: 'The article has been removed',
+      })
+      navigate('/admin/articles')
+    } catch (error) {
+      console.error('Failed to delete article:', error)
+      toast.error('Failed to delete article', {
+        description: error.message || 'Please try again.',
+      })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const inputClass = (hasError) =>
@@ -395,7 +408,9 @@ function AdminEditArticlePage() {
 
     <DeleteArticleModal
       open={showDeleteModal}
-      onClose={() => setShowDeleteModal(false)}
+      onClose={() => {
+        if (!isDeleting) setShowDeleteModal(false)
+      }}
       onConfirm={handleDelete}
     />
     </>
